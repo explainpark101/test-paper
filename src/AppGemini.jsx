@@ -12,10 +12,12 @@ import {
   Upload,
   ToggleLeft,
   ToggleRight,
-  RotateCcw
+  RotateCcw,
+  Printer
 } from 'lucide-react';
 
 import RangeSizeSelect from './components/RangeSizeSelect';
+import PrintScoreView from './components/PrintScoreView';
 
 // --- IndexedDB Helper ---
 const DB_NAME = 'ReactExamAppDB';
@@ -168,6 +170,7 @@ function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, focusNex
 
 function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorrectAnswers }) {
   const [rangeSize, setRangeSize] = useState(10);
+  const [showPrintView, setShowPrintView] = useState(false);
 
   // 마지막부터 연속으로 둘 다 비어 있는 문항은 채점 대상에서 제외
   const effectiveQuestions = React.useMemo(() => {
@@ -225,13 +228,30 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
           <h2 className="text-2xl font-bold text-gray-900">채점: {activePaper?.title}</h2>
           <p className="text-sm text-gray-400 mt-1">좌측: 내 답변 | 우측: 실제 정답 입력</p>
         </div>
-        <button 
-          onClick={() => setView('exam')}
-          className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-100"
-        >
-          <Play className="w-4 h-4" /> 시험 모드 복귀
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowPrintView(true)}
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
+          >
+            <Printer className="w-4 h-4" /> 인쇄 미리보기
+          </button>
+          <button 
+            onClick={() => setView('exam')}
+            className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-100"
+          >
+            <Play className="w-4 h-4" /> 시험 모드 복귀
+          </button>
+        </div>
       </div>
+
+      {showPrintView && (
+        <PrintScoreView
+          title={activePaper?.title ?? ''}
+          questions={effectiveQuestions}
+          onClose={() => setShowPrintView(false)}
+        />
+      )}
 
       <div className="sticky top-0 z-10 py-3 px-4 rounded-xl bg-white border border-gray-100 shadow-sm space-y-3">
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-sm">

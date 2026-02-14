@@ -1,1 +1,28 @@
 @import "tailwindcss";
+
+/* 인쇄 시: 인쇄 뷰만 보이도록, 빈 페이지 방지 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-view-container,
+  .print-view-container * {
+    visibility: visible;
+  }
+  .print-view-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  /* 마지막 페이지 빈 여백 최소화 */
+  .print-view-container .print-content {
+    padding-bottom: 0;
+  }
+}
