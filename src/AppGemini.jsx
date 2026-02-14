@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
   Play, 
@@ -9,6 +9,7 @@ import {
   CheckCircle, 
   FileText, 
   Download,
+  Upload,
   ToggleLeft,
   ToggleRight
 } from 'lucide-react';
@@ -33,7 +34,7 @@ const initDB = () => {
 };
 
 // --- View components (declared outside App to avoid re-creation on every render) ---
-function HomeView({ papers, setView, setActivePaperId, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON }) {
+function HomeView({ papers, setView, setActivePaperId, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, importInputRef }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -63,9 +64,21 @@ function HomeView({ papers, setView, setActivePaperId, newTitle, setNewTitle, on
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <FileText className="w-5 h-5 text-indigo-500" /> 내 문제지 목록
           </h2>
-          <button onClick={onExportJSON} className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800">
-            <Download className="w-3 h-3" /> JSON 추출
-          </button>
+          <div className="flex items-center gap-2">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={onImportJSON}
+            />
+            <button type="button" onClick={() => importInputRef.current?.click()} className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800">
+              <Upload className="w-3 h-3" /> JSON 가져오기
+            </button>
+            <button onClick={onExportJSON} className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800">
+              <Download className="w-3 h-3" /> JSON 추출
+            </button>
+          </div>
         </div>
         <div className="grid gap-4">
           {papers.length === 0 ? (
@@ -333,6 +346,46 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  const importInputRef = useRef(null);
+  const handleImportJSON = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !db) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        const list = Array.isArray(data) ? data : [data];
+        const base = Date.now();
+        const toAdd = [];
+        for (let i = 0; i < list.length; i++) {
+          const p = list[i];
+          if (!p || typeof p.title !== 'string' || !Array.isArray(p.questions)) continue;
+          const paper = {
+            title: p.title,
+            subtitle: p.subtitle ?? '',
+            createdAt: typeof p.createdAt === 'number' ? p.createdAt : base + i,
+            questions: (p.questions || []).map((q, j) => ({
+              id: base + i * 10000 + j,
+              userAnswer: typeof q?.userAnswer === 'string' ? q.userAnswer : '',
+              correctAnswer: typeof q?.correctAnswer === 'string' ? q.correctAnswer : '',
+              type: q?.type === 'textarea' ? 'textarea' : 'input'
+            }))
+          };
+          if (paper.questions.length === 0) paper.questions = [{ id: base + i * 10000, userAnswer: '', correctAnswer: '', type: 'input' }];
+          toAdd.push(paper);
+        }
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        toAdd.forEach((paper) => store.add(paper));
+        transaction.oncomplete = () => refreshPapers(db);
+      } catch (err) {
+        alert('JSON 파일 형식이 올바르지 않습니다.');
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  };
+
   const focusNextInput = (idx) => {
     setTimeout(() => {
       const inputs = document.querySelectorAll('.q-input');
@@ -352,6 +405,8 @@ export default function App() {
         onCopyPaper={handleCopyPaper}
         onDeletePaper={deletePaperFromDB}
         onExportJSON={handleExportJSON}
+        onImportJSON={handleImportJSON}
+        importInputRef={importInputRef}
       />
     ) : view === 'exam' ? (
       <ExamView
