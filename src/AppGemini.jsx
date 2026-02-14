@@ -11,7 +11,8 @@ import {
   Download,
   Upload,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  RotateCcw
 } from 'lucide-react';
 
 // --- IndexedDB Helper ---
@@ -163,7 +164,7 @@ function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, focusNex
   );
 }
 
-function ScoreView({ activePaper, setView, onUpdateCorrectAnswer }) {
+function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorrectAnswers }) {
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-end bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -182,7 +183,17 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer }) {
       <div className="grid grid-cols-[auto_1fr_1fr] gap-4 items-center">
         <div className="text-center font-bold text-gray-400 text-xs tracking-widest uppercase w-20 shrink-0">&nbsp;</div>
         <div className="text-center font-bold text-gray-400 text-xs tracking-widest uppercase">User Answer</div>
-        <div className="text-center font-bold text-gray-400 text-xs tracking-widest uppercase">Correct Answer</div>
+        <div className="flex items-center justify-center gap-2">
+          <span className="font-bold text-gray-400 text-xs tracking-widest uppercase">Correct Answer</span>
+          <button
+            type="button"
+            onClick={onResetAllCorrectAnswers}
+            className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors"
+            title="Correct Answer 전체 초기화"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> 초기화
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -329,6 +340,16 @@ export default function App() {
     savePaperToDB(updatedPaper);
   };
 
+  const handleResetAllCorrectAnswers = () => {
+    if (!activePaper) return;
+    const updatedPaper = {
+      ...activePaper,
+      questions: activePaper.questions.map((q) => ({ ...q, correctAnswer: '' }))
+    };
+    setPapers((prev) => prev.map((p) => (p.id === activePaperId ? updatedPaper : p)));
+    savePaperToDB(updatedPaper);
+  };
+
   const handleToggleType = (qIdx) => {
     const updatedPaper = { ...activePaper };
     updatedPaper.questions = [...updatedPaper.questions];
@@ -425,6 +446,7 @@ export default function App() {
         activePaper={activePaper}
         setView={setView}
         onUpdateCorrectAnswer={handleUpdateCorrectAnswer}
+        onResetAllCorrectAnswers={handleResetAllCorrectAnswers}
       />
     );
 
