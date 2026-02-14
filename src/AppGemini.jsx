@@ -188,7 +188,7 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
           <button
             type="button"
             onClick={onResetAllCorrectAnswers}
-            className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors"
+            className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
             title="Correct Answer 전체 초기화"
           >
             <RotateCcw className="w-3.5 h-3.5" /> 초기화
@@ -342,6 +342,7 @@ export default function App() {
 
   const handleResetAllCorrectAnswers = () => {
     if (!activePaper) return;
+    if (!confirm('모든 Correct Answer를 초기화할까요?')) return;
     const updatedPaper = {
       ...activePaper,
       questions: activePaper.questions.map((q) => ({ ...q, correctAnswer: '' }))
