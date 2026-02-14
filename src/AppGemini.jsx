@@ -130,7 +130,7 @@ function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, focusNex
         {activePaper?.questions.map((q, idx) => (
           <div key={q.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all">
             <div className="flex justify-between items-center mb-4">
-              <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Question {idx + 1}</span>
+              <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Question <span className="text-2xl font-black text-indigo-500">{idx + 1}</span></span>
               <button 
                 onClick={() => onToggleType(idx)}
                 className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 hover:text-indigo-500 transition-colors"
@@ -179,9 +179,10 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 text-center font-bold text-gray-400 text-xs tracking-widest uppercase">
-        <div>User Answer</div>
-        <div>Correct Answer</div>
+      <div className="grid grid-cols-[auto_1fr_1fr] gap-4 items-center">
+        <div className="text-center font-bold text-gray-400 text-xs tracking-widest uppercase w-20 shrink-0">&nbsp;</div>
+        <div className="text-center font-bold text-gray-400 text-xs tracking-widest uppercase">User Answer</div>
+        <div className="text-center font-bold text-gray-400 text-xs tracking-widest uppercase">Correct Answer</div>
       </div>
 
       <div className="space-y-4">
@@ -190,7 +191,10 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer }) {
           const isDiff = q.correctAnswer.trim() !== '' && q.userAnswer.trim() !== q.correctAnswer.trim();
 
           return (
-            <div key={q.id} className="grid grid-cols-2 gap-4 items-stretch">
+            <div key={q.id} className="grid grid-cols-[auto_1fr_1fr] gap-4 items-stretch">
+              <div className="flex items-center justify-center w-20 shrink-0">
+                <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Question <span className="text-2xl font-black text-indigo-500">{idx + 1}</span></span>
+              </div>
               <div className={`p-5 rounded-2xl text-sm whitespace-pre-wrap flex items-center transition-all ${isDiff ? 'bg-red-50 border-2 border-red-100 text-red-900 shadow-inner' : 'bg-gray-100 text-gray-600'}`}>
                 {q.userAnswer || <span className="text-gray-300 italic">입력 없음</span>}
               </div>
