@@ -165,6 +165,22 @@ function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, focusNex
 }
 
 function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorrectAnswers }) {
+  const stats = React.useMemo(() => {
+    if (!activePaper?.questions?.length) return { total: 0, correct: 0, wrong: 0, pending: 0 };
+    let correct = 0, wrong = 0, pending = 0;
+    activePaper.questions.forEach((q) => {
+      const hasCorrect = q.correctAnswer.trim() !== '';
+      if (!hasCorrect) {
+        pending += 1;
+      } else if (q.userAnswer.trim() === q.correctAnswer.trim()) {
+        correct += 1;
+      } else {
+        wrong += 1;
+      }
+    });
+    return { total: activePaper.questions.length, correct, wrong, pending };
+  }, [activePaper?.questions]);
+
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-end bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -178,6 +194,15 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
         >
           <Play className="w-4 h-4" /> 시험 모드 복귀
         </button>
+      </div>
+
+      <div className="sticky top-0 z-10 py-3 px-4 rounded-xl bg-white border border-gray-100 shadow-sm flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-sm">
+        <span className="font-bold text-gray-700">
+          총 <span className="text-indigo-600">{stats.total}</span>개 중
+        </span>
+        <span className="text-green-600 font-semibold">맞음 {stats.correct}개</span>
+        <span className="text-red-500 font-semibold">틀림 {stats.wrong}개</span>
+        <span className="text-gray-400 font-medium">미채점 {stats.pending}개</span>
       </div>
 
       <div className="grid grid-cols-[auto_1fr_1fr] gap-4 items-center">
