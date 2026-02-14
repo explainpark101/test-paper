@@ -15,6 +15,8 @@ import {
   RotateCcw
 } from 'lucide-react';
 
+import RangeSizeSelect from './components/RangeSizeSelect';
+
 // --- IndexedDB Helper ---
 const DB_NAME = 'ReactExamAppDB';
 const DB_VERSION = 1;
@@ -165,10 +167,25 @@ function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, focusNex
 }
 
 function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorrectAnswers }) {
+  const [rangeSize, setRangeSize] = useState(10);
+
+  // 마지막부터 연속으로 둘 다 비어 있는 문항은 채점 대상에서 제외
+  const effectiveQuestions = React.useMemo(() => {
+    const list = activePaper?.questions ?? [];
+    let end = 0;
+    for (let i = 0; i < list.length; i++) {
+      const q = list[i];
+      if (q.userAnswer.trim() !== '' || q.correctAnswer.trim() !== '') {
+        end = i + 1;
+      }
+    }
+    return list.slice(0, end);
+  }, [activePaper?.questions]);
+
   const stats = React.useMemo(() => {
-    if (!activePaper?.questions?.length) return { total: 0, correct: 0, wrong: 0, pending: 0 };
+    if (!effectiveQuestions.length) return { total: 0, correct: 0, wrong: 0, pending: 0 };
     let correct = 0, wrong = 0, pending = 0;
-    activePaper.questions.forEach((q) => {
+    effectiveQuestions.forEach((q) => {
       const hasCorrect = q.correctAnswer.trim() !== '';
       if (!hasCorrect) {
         pending += 1;
@@ -178,8 +195,28 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
         wrong += 1;
       }
     });
-    return { total: activePaper.questions.length, correct, wrong, pending };
-  }, [activePaper?.questions]);
+    return { total: effectiveQuestions.length, correct, wrong, pending };
+  }, [effectiveQuestions]);
+
+  const rangeStats = React.useMemo(() => {
+    if (!effectiveQuestions.length || !rangeSize || rangeSize < 1) return [];
+    const size = rangeSize;
+    const list = effectiveQuestions;
+    const result = [];
+    for (let start = 0; start < list.length; start += size) {
+      const end = Math.min(start + size, list.length);
+      let correct = 0, wrong = 0, pending = 0;
+      for (let i = start; i < end; i++) {
+        const q = list[i];
+        const hasCorrect = q.correctAnswer.trim() !== '';
+        if (!hasCorrect) pending += 1;
+        else if (q.userAnswer.trim() === q.correctAnswer.trim()) correct += 1;
+        else wrong += 1;
+      }
+      result.push({ start: start + 1, end, correct, wrong, pending });
+    }
+    return result;
+  }, [effectiveQuestions, rangeSize]);
 
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
@@ -196,13 +233,34 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
         </button>
       </div>
 
-      <div className="sticky top-0 z-10 py-3 px-4 rounded-xl bg-white border border-gray-100 shadow-sm flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-sm">
-        <span className="font-bold text-gray-700">
-          총 <span className="text-indigo-600">{stats.total}</span>개 중
-        </span>
-        <span className="text-green-600 font-semibold">맞음 {stats.correct}개</span>
-        <span className="text-red-500 font-semibold">틀림 {stats.wrong}개</span>
-        <span className="text-gray-400 font-medium">미채점 {stats.pending}개</span>
+      <div className="sticky top-0 z-10 py-3 px-4 rounded-xl bg-white border border-gray-100 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-sm">
+          <span className="font-bold text-gray-700">
+            총 <span className="text-indigo-600">{stats.total}</span>개 중
+          </span>
+          <span className="text-green-600 font-semibold">맞음 {stats.correct}개</span>
+          <span className="text-red-500 font-semibold">틀림 {stats.wrong}개</span>
+          <span className="text-gray-400 font-medium">미채점 {stats.pending}개</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-3 border-t border-gray-100 pt-3">
+          <span className="text-xs font-medium text-gray-500">문항 구간별:</span>
+          <RangeSizeSelect
+            value={rangeSize}
+            onChange={setRangeSize}
+            max={effectiveQuestions.length || 9999}
+          />
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+            {rangeStats.map((r) => (
+              <span key={`${r.start}-${r.end}`} className="text-gray-600 whitespace-nowrap">
+                <span className="font-semibold text-indigo-600">{r.start}~{r.end}번</span>
+                {' '}
+                <span className="text-green-600">✓{r.correct}</span>
+                <span className="text-red-500"> ✗{r.wrong}</span>
+                {r.pending > 0 && <span className="text-gray-400"> 미{r.pending}</span>}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-[auto_1fr_1fr] gap-4 items-center">
@@ -222,8 +280,7 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
       </div>
 
       <div className="space-y-4">
-        {activePaper?.questions.map((q, idx) => {
-          if (q.userAnswer.trim() === '' && q.correctAnswer.trim() === '' && idx === activePaper.questions.length - 1) return null;
+        {effectiveQuestions.map((q, idx) => {
           const isDiff = q.correctAnswer.trim() !== '' && q.userAnswer.trim() !== q.correctAnswer.trim();
 
           return (
