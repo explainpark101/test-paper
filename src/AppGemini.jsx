@@ -89,11 +89,15 @@ function HomeView({ papers, setView, setActivePaperId, newTitle, setNewTitle, on
           {papers.length === 0 ? (
             <div className="text-center py-12 text-gray-400">생성된 문제지가 없습니다.</div>
           ) : (
-            papers.sort((a,b) => b.createdAt - a.createdAt).map(p => (
+            papers.sort((a,b) => b.createdAt - a.createdAt).map(p => {
+              const createdDate = new Date(p.createdAt);
+              const dateStr = `${createdDate.getFullYear()}-${String(createdDate.getMonth() + 1).padStart(2, '0')}-${String(createdDate.getDate()).padStart(2, '0')}`;
+              const timeStr = `${String(createdDate.getHours()).padStart(2, '0')}:${String(createdDate.getMinutes()).padStart(2, '0')}`;
+              return (
               <div key={p.id} className="group flex items-center justify-between p-5 border border-gray-100 rounded-xl hover:border-indigo-200 hover:bg-indigo-50/30 transition-all">
                 <div>
                   <h3 className="font-bold text-gray-800">{p.title}</h3>
-                  <p className="text-xs text-gray-400 mt-1">{p.subtitle || '기본 시험지'} | {p.questions.length}개 문항</p>
+                  <p className="text-xs text-gray-400 mt-1">{dateStr} {timeStr} | {p.questions.length}개 문항</p>
                 </div>
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => { setActivePaperId(p.id); setView('exam'); }} className="p-2 text-indigo-600 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-indigo-100">
@@ -107,7 +111,8 @@ function HomeView({ papers, setView, setActivePaperId, newTitle, setNewTitle, on
                   </button>
                 </div>
               </div>
-            ))
+            );
+            })
           )}
         </div>
       </div>
