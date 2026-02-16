@@ -13,7 +13,8 @@ import {
   ToggleLeft,
   ToggleRight,
   RotateCcw,
-  Printer
+  Printer,
+  Star
 } from 'lucide-react';
 
 import RangeSizeSelect from './components/RangeSizeSelect';
@@ -23,6 +24,14 @@ import PrintScoreView from './components/PrintScoreView';
 const DB_NAME = 'ReactExamAppDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'papers';
+
+// Paper ID 생성: 브라우저에서 지원되면 crypto.randomUUID 사용, 아니면 fallback
+const generatePaperId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `paper-${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
+};
 
 const initDB = () => {
   return new Promise((resolve, reject) => {
@@ -120,7 +129,7 @@ function HomeView({ papers, setView, setActivePaperId, newTitle, setNewTitle, on
   );
 }
 
-function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, focusNextInput }) {
+function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, onToggleStar, focusNextInput }) {
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-end bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -140,7 +149,16 @@ function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, focusNex
         {activePaper?.questions.map((q, idx) => (
           <div key={q.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all">
             <div className="flex justify-between items-center mb-4">
-              <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Question <span className="text-2xl font-black text-indigo-500">{idx + 1}</span></span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Question <span className="text-2xl font-black text-indigo-500">{idx + 1}</span></span>
+                <button
+                  onClick={() => onToggleStar(idx)}
+                  className="p-1 hover:bg-yellow-50 rounded transition-colors cursor-pointer"
+                  title={q.starred ? '별표 제거' : '별표 추가'}
+                >
+                  <Star className={`w-4 h-4 ${q.starred ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-yellow-400'}`} />
+                </button>
+              </div>
               <button 
                 onClick={() => onToggleType(idx)}
                 className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 hover:text-indigo-500 transition-colors"
@@ -173,9 +191,10 @@ function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, focusNex
   );
 }
 
-function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorrectAnswers }) {
+function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorrectAnswers, onToggleStar }) {
   const [rangeSize, setRangeSize] = useState(10);
   const [showPrintView, setShowPrintView] = useState(false);
+  const [showOnlyStarred, setShowOnlyStarred] = useState(false);
 
   // 마지막부터 연속으로 둘 다 비어 있는 문항은 채점 대상에서 제외
   const effectiveQuestions = React.useMemo(() => {
@@ -190,10 +209,16 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
     return list.slice(0, end);
   }, [activePaper?.questions]);
 
+  const visibleQuestions = React.useMemo(() => {
+    if (!effectiveQuestions.length) return [];
+    if (!showOnlyStarred) return effectiveQuestions;
+    return effectiveQuestions.filter((q) => q.starred);
+  }, [effectiveQuestions, showOnlyStarred]);
+
   const stats = React.useMemo(() => {
-    if (!effectiveQuestions.length) return { total: 0, correct: 0, wrong: 0, pending: 0 };
+    if (!visibleQuestions.length) return { total: 0, correct: 0, wrong: 0, pending: 0 };
     let correct = 0, wrong = 0, pending = 0;
-    effectiveQuestions.forEach((q) => {
+    visibleQuestions.forEach((q) => {
       const hasCorrect = q.correctAnswer.trim() !== '';
       if (!hasCorrect) {
         pending += 1;
@@ -203,13 +228,13 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
         wrong += 1;
       }
     });
-    return { total: effectiveQuestions.length, correct, wrong, pending };
-  }, [effectiveQuestions]);
+    return { total: visibleQuestions.length, correct, wrong, pending };
+  }, [visibleQuestions]);
 
   const rangeStats = React.useMemo(() => {
-    if (!effectiveQuestions.length || !rangeSize || rangeSize < 1) return [];
+    if (!visibleQuestions.length || !rangeSize || rangeSize < 1) return [];
     const size = rangeSize;
-    const list = effectiveQuestions;
+    const list = visibleQuestions;
     const result = [];
     for (let start = 0; start < list.length; start += size) {
       const end = Math.min(start + size, list.length);
@@ -224,7 +249,7 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
       result.push({ start: start + 1, end, correct, wrong, pending });
     }
     return result;
-  }, [effectiveQuestions, rangeSize]);
+  }, [visibleQuestions, rangeSize]);
 
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
@@ -268,11 +293,23 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
           <span className="text-gray-400 font-medium">미채점 {stats.pending}개</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-3 border-t border-gray-100 pt-3">
+          <button
+            type="button"
+            onClick={() => setShowOnlyStarred((prev) => !prev)}
+            className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
+              showOnlyStarred
+                ? 'border-yellow-400 bg-yellow-50 text-yellow-700'
+                : 'border-gray-200 bg-white text-gray-500 hover:border-yellow-300 hover:text-yellow-600'
+            }`}
+          >
+            <Star className={`w-3 h-3 ${showOnlyStarred ? 'fill-yellow-400 text-yellow-400' : 'text-yellow-400'}`} />
+            <span>별표 문항만 보기</span>
+          </button>
           <span className="text-xs font-medium text-gray-500">문항 구간별:</span>
           <RangeSizeSelect
             value={rangeSize}
             onChange={setRangeSize}
-            max={effectiveQuestions.length || 9999}
+            max={visibleQuestions.length || 9999}
           />
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
             {rangeStats.map((r) => (
@@ -305,13 +342,22 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
       </div>
 
       <div className="space-y-4">
-        {effectiveQuestions.map((q, idx) => {
+        {visibleQuestions.map((q, idx) => {
+          const originalIndex = activePaper?.questions?.indexOf(q) ?? idx;
+          const displayNumber = originalIndex + 1;
           const isDiff = q.correctAnswer.trim() !== '' && q.userAnswer.trim() !== q.correctAnswer.trim();
 
           return (
             <div key={q.id} className="grid grid-cols-[auto_1fr_1fr] gap-4 items-stretch">
-              <div className="flex items-center justify-center w-20 shrink-0">
-                <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Question <span className="text-2xl font-black text-indigo-500">{idx + 1}</span></span>
+              <div className="flex items-center justify-center gap-2 w-20 shrink-0">
+                <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Question <span className="text-2xl font-black text-indigo-500">{displayNumber}</span></span>
+                <button
+                  onClick={() => onToggleStar(originalIndex)}
+                  className="p-1 hover:bg-yellow-50 rounded transition-colors cursor-pointer"
+                  title={q.starred ? '별표 제거' : '별표 추가'}
+                >
+                  <Star className={`w-3.5 h-3.5 ${q.starred ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-yellow-400'}`} />
+                </button>
               </div>
               <div className={`p-5 rounded-2xl text-sm whitespace-pre-wrap flex items-center transition-all ${isDiff ? 'bg-red-50 border-2 border-red-100 text-red-900 shadow-inner' : 'bg-gray-100 text-gray-600'}`}>
                 {q.userAnswer || <span className="text-gray-300 italic">입력 없음</span>}
@@ -319,7 +365,7 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
               <textarea 
                 className={`q-score-input w-full p-5 rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] resize-none ${isDiff ? 'border-red-400 bg-white text-red-600 focus:ring-2 focus:ring-red-100' : 'border-gray-100 focus:border-green-500 bg-white'}`}
                 value={q.correctAnswer}
-                onChange={(e) => onUpdateCorrectAnswer(idx, e.target.value)}
+                onChange={(e) => onUpdateCorrectAnswer(originalIndex, e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -391,18 +437,19 @@ export default function App() {
   const handleCreatePaper = () => {
     if (!newTitle.trim()) return;
     const newPaper = {
+      id: generatePaperId(),
       title: newTitle.trim(),
       subtitle: '',
       createdAt: Date.now(),
-      questions: [{ id: Date.now(), userAnswer: '', correctAnswer: '', type: 'input' }]
+      questions: [{ id: Date.now(), userAnswer: '', correctAnswer: '', type: 'input', starred: false }]
     };
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const request = store.add(newPaper);
-    request.onsuccess = (e) => {
+    request.onsuccess = () => {
       setNewTitle('');
       refreshPapers(db);
-      setActivePaperId(e.target.result);
+      setActivePaperId(newPaper.id);
       setView('exam');
     };
   };
@@ -414,7 +461,7 @@ export default function App() {
     const timeStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()} ${now.getHours()}:${now.getMinutes()}`;
     const copy = {
       ...original,
-      id: undefined,
+      id: generatePaperId(),
       subtitle: `복사본 (${timeStr})`,
       createdAt: now.getTime()
     };
@@ -432,7 +479,8 @@ export default function App() {
         id: Date.now(),
         userAnswer: '',
         correctAnswer: '',
-        type: updatedPaper.questions[qIdx].type
+        type: updatedPaper.questions[qIdx].type,
+        starred: false
       });
     }
     setPapers((prev) => prev.map((p) => (p.id === activePaperId ? updatedPaper : p)));
@@ -469,6 +517,17 @@ export default function App() {
     savePaperToDB(updatedPaper);
   };
 
+  const handleToggleStar = (qIdx) => {
+    const updatedPaper = { ...activePaper };
+    updatedPaper.questions = [...updatedPaper.questions];
+    updatedPaper.questions[qIdx] = {
+      ...updatedPaper.questions[qIdx],
+      starred: !updatedPaper.questions[qIdx].starred
+    };
+    setPapers((prev) => prev.map((p) => (p.id === activePaperId ? updatedPaper : p)));
+    savePaperToDB(updatedPaper);
+  };
+
   const handleExportJSON = () => {
     const blob = new Blob([JSON.stringify(papers, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -494,6 +553,7 @@ export default function App() {
           const p = list[i];
           if (!p || typeof p.title !== 'string' || !Array.isArray(p.questions)) continue;
           const paper = {
+            id: typeof p.id === 'string' && p.id ? p.id : generatePaperId(),
             title: p.title,
             subtitle: p.subtitle ?? '',
             createdAt: typeof p.createdAt === 'number' ? p.createdAt : base + i,
@@ -501,10 +561,11 @@ export default function App() {
               id: base + i * 10000 + j,
               userAnswer: typeof q?.userAnswer === 'string' ? q.userAnswer : '',
               correctAnswer: typeof q?.correctAnswer === 'string' ? q.correctAnswer : '',
-              type: q?.type === 'textarea' ? 'textarea' : 'input'
+              type: q?.type === 'textarea' ? 'textarea' : 'input',
+              starred: q?.starred === true
             }))
           };
-          if (paper.questions.length === 0) paper.questions = [{ id: base + i * 10000, userAnswer: '', correctAnswer: '', type: 'input' }];
+          if (paper.questions.length === 0) paper.questions = [{ id: base + i * 10000, userAnswer: '', correctAnswer: '', type: 'input', starred: false }];
           toAdd.push(paper);
         }
         const transaction = db.transaction(STORE_NAME, 'readwrite');
@@ -547,6 +608,7 @@ export default function App() {
         setView={setView}
         onUpdateAnswer={handleUpdateAnswer}
         onToggleType={handleToggleType}
+        onToggleStar={handleToggleStar}
         focusNextInput={focusNextInput}
       />
     ) : (
@@ -555,6 +617,7 @@ export default function App() {
         setView={setView}
         onUpdateCorrectAnswer={handleUpdateCorrectAnswer}
         onResetAllCorrectAnswers={handleResetAllCorrectAnswers}
+        onToggleStar={handleToggleStar}
       />
     );
 
