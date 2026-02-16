@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Plus, 
   Play, 
@@ -48,7 +49,7 @@ const initDB = () => {
 };
 
 // --- View components (declared outside App to avoid re-creation on every render) ---
-function HomeView({ papers, setView, setActivePaperId, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, importInputRef }) {
+function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, importInputRef }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -109,7 +110,7 @@ function HomeView({ papers, setView, setActivePaperId, newTitle, setNewTitle, on
                   <p className="text-xs text-gray-400 mt-1">{dateStr} {timeStr} | {p.questions.length}개 문항</p>
                 </div>
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => { setActivePaperId(p.id); setView('exam'); }} className="p-2 text-indigo-600 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-indigo-100">
+                  <button onClick={() => { setActivePaperId(p.id); setView('exam'); navigate(`/?id=${p.id}&view=exam`); }} className="p-2 text-indigo-600 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-indigo-100">
                     <Play className="w-4 h-4" />
                   </button>
                   <button onClick={() => onCopyPaper(p.id)} className="p-2 text-gray-600 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-gray-100">
@@ -129,7 +130,7 @@ function HomeView({ papers, setView, setActivePaperId, newTitle, setNewTitle, on
   );
 }
 
-function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, onToggleStar, focusNextInput }) {
+function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswer, onToggleType, onToggleStar, focusNextInput }) {
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-end bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -138,7 +139,7 @@ function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, onToggle
           <p className="text-sm text-gray-400 mt-1">{activePaper?.subtitle || '시험 모드'}</p>
         </div>
         <button 
-          onClick={() => setView('score')}
+          onClick={() => { setView('score'); navigate(`/?id=${activePaperId}&view=score`); }}
           className="bg-green-600 text-white px-5 py-2.5 rounded-xl hover:bg-green-700 transition-all flex items-center gap-2 shadow-lg shadow-green-100"
         >
           <CheckCircle className="w-4 h-4" /> 채점 모드 전환
@@ -191,7 +192,7 @@ function ExamView({ activePaper, setView, onUpdateAnswer, onToggleType, onToggle
   );
 }
 
-function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorrectAnswers, onToggleStar }) {
+function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorrectAnswer, onResetAllCorrectAnswers, onToggleStar }) {
   const [rangeSize, setRangeSize] = useState(10);
   const [showPrintView, setShowPrintView] = useState(false);
   const [showOnlyStarred, setShowOnlyStarred] = useState(false);
@@ -267,7 +268,7 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
             <Printer className="w-4 h-4" /> 인쇄 미리보기
           </button>
           <button 
-            onClick={() => setView('exam')}
+            onClick={() => { setView('exam'); navigate(`/?id=${activePaperId}&view=exam`); }}
             className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-100"
           >
             <Play className="w-4 h-4" /> 시험 모드 복귀
@@ -384,6 +385,11 @@ function ScoreView({ activePaper, setView, onUpdateCorrectAnswer, onResetAllCorr
 }
 
 export default function App() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const urlPaperId = searchParams.get('id');
+  const urlView = searchParams.get('view');
   const [db, setDb] = useState(null);
   const [papers, setPapers] = useState([]);
   const [activePaperId, setActivePaperId] = useState(null);
@@ -410,6 +416,51 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // 기존 /paper/:id(/:view) 주소로 들어온 경우, search parameter 형식으로 리다이렉트
+  useEffect(() => {
+    const path = location.pathname || '';
+    if (!path.startsWith('/paper/')) return;
+
+    const segments = path.split('/').filter(Boolean); // ["paper", "{id}", "{view?}"]
+    if (segments[0] !== 'paper' || !segments[1]) return;
+
+    const legacyId = segments[1];
+    const legacyView = segments[2] === 'score' ? 'score' : 'exam';
+
+    navigate(`/?id=${legacyId}&view=${legacyView}`, { replace: true });
+  }, [location.pathname, navigate]);
+
+  // URL에서 문제지 ID와 view 읽어서 자동 로드 (URL 변경 시에만)
+  useEffect(() => {
+    if (!papers.length) return;
+    
+    if (urlPaperId) {
+      const paper = papers.find(p => p.id === urlPaperId);
+      if (paper) {
+        if (paper.id !== activePaperId) {
+          setActivePaperId(paper.id);
+        }
+        const targetView = urlView && ['exam', 'score'].includes(urlView) ? urlView : 'exam';
+        if (targetView !== view) {
+          setView(targetView);
+        }
+      } else {
+        // URL에 있는 ID가 존재하지 않으면 홈으로
+        if (activePaperId || view !== 'home') {
+          setActivePaperId(null);
+          setView('home');
+          navigate('/?', { replace: true });
+        }
+      }
+    } else {
+      // URL에 ID가 없으면 홈으로
+      if (activePaperId || view !== 'home') {
+        setActivePaperId(null);
+        setView('home');
+      }
+    }
+  }, [papers, urlPaperId, urlView]); // activePaperId와 view는 의존성에서 제외하여 무한 루프 방지
+
   
 
   const savePaperToDB = (paper) => {
@@ -427,7 +478,11 @@ export default function App() {
     const request = store.delete(id);
     request.onsuccess = () => {
       refreshPapers(db);
-      if (activePaperId === id) setView('home');
+      if (activePaperId === id) {
+        setView('home');
+        setActivePaperId(null);
+        navigate('/?', { replace: true });
+      }
     };
   };
 
@@ -451,6 +506,7 @@ export default function App() {
       refreshPapers(db);
       setActivePaperId(newPaper.id);
       setView('exam');
+      navigate(`/?id=${newPaper.id}&view=exam`, { replace: true });
     };
   };
 
@@ -593,6 +649,7 @@ export default function App() {
         papers={papers}
         setView={setView}
         setActivePaperId={setActivePaperId}
+        navigate={navigate}
         newTitle={newTitle}
         setNewTitle={setNewTitle}
         onCreatePaper={handleCreatePaper}
@@ -606,6 +663,8 @@ export default function App() {
       <ExamView
         activePaper={activePaper}
         setView={setView}
+        navigate={navigate}
+        activePaperId={activePaperId}
         onUpdateAnswer={handleUpdateAnswer}
         onToggleType={handleToggleType}
         onToggleStar={handleToggleStar}
@@ -615,6 +674,8 @@ export default function App() {
       <ScoreView
         activePaper={activePaper}
         setView={setView}
+        navigate={navigate}
+        activePaperId={activePaperId}
         onUpdateCorrectAnswer={handleUpdateCorrectAnswer}
         onResetAllCorrectAnswers={handleResetAllCorrectAnswers}
         onToggleStar={handleToggleStar}
@@ -626,7 +687,7 @@ export default function App() {
       <div className="max-w-4xl mx-auto p-6 md:p-12">
         <header className="mb-12 flex justify-between items-center">
           <button 
-            onClick={() => setView('home')} 
+            onClick={() => { setView('home'); setActivePaperId(null); navigate('/?'); }} 
             className="flex items-center gap-2 group"
           >
             <div className="p-2 bg-indigo-600 rounded-lg text-white group-hover:rotate-12 transition-transform shadow-lg shadow-indigo-100">
@@ -637,7 +698,7 @@ export default function App() {
           
           {view !== 'home' && (
             <button 
-              onClick={() => setView('home')}
+              onClick={() => { setView('home'); setActivePaperId(null); navigate('/?'); }}
               className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors"
             >
               <Home className="w-4 h-4" /> 홈으로
