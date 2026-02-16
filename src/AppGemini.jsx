@@ -534,7 +534,8 @@ export default function App() {
     updatedPaper.questions[qIdx] = { ...updatedPaper.questions[qIdx], userAnswer: val };
 
     // Auto-add next question if current is last and has content
-    if (qIdx === updatedPaper.questions.length - 1 && val.trim() !== '') {
+    const addedNewQuestion = qIdx === updatedPaper.questions.length - 1 && val.trim() !== '';
+    if (addedNewQuestion) {
       updatedPaper.questions.push({
         id: Date.now(),
         userAnswer: '',
@@ -545,6 +546,13 @@ export default function App() {
     }
     setPapers((prev) => prev.map((p) => (p.id === activePaperId ? updatedPaper : p)));
     savePaperToDB(updatedPaper);
+
+    // 새 문제가 추가되면 맨 아래로 부드럽게 스크롤
+    if (addedNewQuestion) {
+      setTimeout(() => {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+      }, 100);
+    }
   };
 
   const handleUpdateCorrectAnswer = (qIdx, val) => {
