@@ -21,6 +21,9 @@ import {
 import RangeSizeSelect from './components/RangeSizeSelect';
 import PrintScoreView from './components/PrintScoreView';
 
+// Base path from environment variable
+const BASE_PATH = import.meta.env.VITE_BASE_PATH || '/';
+
 // --- IndexedDB Helper ---
 const DB_NAME = 'ReactExamAppDB';
 const DB_VERSION = 1;
@@ -418,6 +421,7 @@ export default function App() {
 
   // 기존 /paper/:id(/:view) 주소로 들어온 경우, search parameter 형식으로 리다이렉트
   useEffect(() => {
+    // React Router의 basename이 이미 제거된 경로를 반환하므로, 그대로 사용
     const path = location.pathname || '';
     if (!path.startsWith('/paper/')) return;
 

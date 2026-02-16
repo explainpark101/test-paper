@@ -24,12 +24,16 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import "./index.css";
 
+const basePath = import.meta.env.VITE_BASE_PATH || '/';
+
 const router = createBrowserRouter([
   { path: "/", element: <AppGemini /> },
   // 구주소(/paper/:id, /paper/:id/:view) 호환용 라우트
   { path: "/paper/:id", element: <AppGemini /> },
   { path: "/paper/:id/:view", element: <AppGemini /> },
-]);
+], {
+  basename: basePath === '/' ? undefined : basePath.replace(/\/$/, ''),
+});
 
 export default function App() {
   return <RouterProvider router={router} />;
