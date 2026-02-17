@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Star } from 'lucide-react';
 
 function ScoreQuestionItem({ 
@@ -12,6 +12,15 @@ function ScoreQuestionItem({
   onToggleStar,
   scoreInputIndex
 }) {
+  const memoRef = useRef(null);
+
+  useEffect(() => {
+    if (memoRef.current) {
+      memoRef.current.style.height = 'auto';
+      memoRef.current.style.height = `${memoRef.current.scrollHeight}px`;
+    }
+  }, [question.memo]);
+
   return (
     <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4 items-stretch">
       <div className="flex flex-col items-center justify-center gap-1 w-20 shrink-0">
@@ -61,9 +70,15 @@ function ScoreQuestionItem({
         placeholder="정답 입력 (Enter: 다음)..."
       />
       <textarea 
-        className="w-full p-5 rounded-2xl border-2 border-gray-100 outline-none text-sm transition-all min-h-[60px] resize-none focus:border-indigo-500 bg-white"
+        ref={memoRef}
+        className="w-full p-5 rounded-2xl border-2 border-gray-100 outline-none text-sm transition-all min-h-[60px] resize-none focus:border-indigo-500 bg-white overflow-hidden"
         value={question.memo || ''}
-        onChange={(e) => onUpdateMemo(originalIndex, e.target.value)}
+        onChange={(e) => {
+          onUpdateMemo(originalIndex, e.target.value);
+          // Auto-resize
+          e.target.style.height = 'auto';
+          e.target.style.height = `${e.target.scrollHeight}px`;
+        }}
         placeholder="메모..."
       />
     </div>
