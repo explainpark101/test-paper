@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Printer } from 'lucide-react';
+import { parseMarkdown } from '../utils/markdownParser';
 
 /**
  * 채점 결과 인쇄 뷰
@@ -84,7 +85,9 @@ function PrintScoreView({ title, questions, onClose }) {
                       {q.correctAnswer || '—'}
                     </td>
                     <td className="max-w-[30%] p-1.5 text-gray-700 print:p-1 print:leading-tight">
-                      {q.memo?.trim() || '—'}
+                      {q.memo?.trim() ? (
+                        <div dangerouslySetInnerHTML={{ __html: parseMarkdown(q.memo) }} />
+                      ) : '—'}
                     </td>
                   </tr>
                 );
@@ -125,7 +128,7 @@ function PrintScoreView({ title, questions, onClose }) {
                       {q.memo?.trim() && (
                         <>
                           <span className="font-bold text-gray-500">메모:</span>
-                          <span className="text-gray-700 italic">{q.memo}</span>
+                          <span className="text-gray-700 italic" dangerouslySetInnerHTML={{ __html: parseMarkdown(q.memo) }} />
                         </>
                       )}
                     </div>

@@ -1,5 +1,6 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Star } from 'lucide-react';
+import { parseMarkdown } from '../utils/markdownParser';
 
 function ScoreQuestionItem({ 
   question, 
@@ -13,13 +14,42 @@ function ScoreQuestionItem({
   scoreInputIndex
 }) {
   const memoRef = useRef(null);
+  const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
-    if (memoRef.current) {
+    if (memoRef.current && !isFocused) {
+      // 포커스가 없을 때만 높이 조정
       memoRef.current.style.height = 'auto';
       memoRef.current.style.height = `${memoRef.current.scrollHeight}px`;
     }
-  }, [question.memo]);
+  }, [question.memo, isFocused]);
+
+  const handleMemoFocus = () => {
+    setIsFocused(true);
+    // 포커스 시 텍스트로 변경
+    if (memoRef.current) {
+      memoRef.current.innerText = question.memo || '';
+    }
+  };
+
+  const handleMemoBlur = () => {
+    setIsFocused(false);
+    const text = memoRef.current?.innerText || '';
+    onUpdateMemo(originalIndex, text);
+  };
+
+  const handleMemoInput = (e) => {
+    // Auto-resize
+    e.target.style.height = 'auto';
+    e.target.style.height = `${e.target.scrollHeight}px`;
+  };
+
+  const handleMemoPaste = (e) => {
+    // HTML 붙여넣기 방지, 순수 텍스트만 허용
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  };
 
   return (
     <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4 items-stretch">
@@ -69,18 +99,41 @@ function ScoreQuestionItem({
         }}
         placeholder="정답 입력 (Enter: 다음)..."
       />
-      <textarea 
+      <div
         ref={memoRef}
-        className="w-full p-5 rounded-2xl border-2 border-gray-100 outline-none text-sm transition-all min-h-[60px] resize-none focus:border-indigo-500 bg-white overflow-hidden"
-        value={question.memo || ''}
-        onChange={(e) => {
-          onUpdateMemo(originalIndex, e.target.value);
-          // Auto-resize
-          e.target.style.height = 'auto';
-          e.target.style.height = `${e.target.scrollHeight}px`;
+        className={`w-full p-5 rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] resize-none bg-white overflow-hidden ${
+          isFocused ? 'border-indigo-500' : 'border-gray-100'
+        }`}
+        contentEditable
+        suppressContentEditableWarning
+        onFocus={handleMemoFocus}
+        onBlur={handleMemoBlur}
+        onInput={handleMemoInput}
+        onPaste={handleMemoPaste}
+        style={{ 
+          minHeight: '60px',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word'
         }}
-        placeholder="메모..."
-      />
+        data-placeholder="메모... (Markdown: # heading, **bold**, *italic*, __underline__, ~~strikeline~~)"
+        dangerouslySetInnerHTML={isFocused ? undefined : { __html: parseMarkdown(question.memo || '') }}
+      >
+        {isFocused ? question.memo || '' : undefined}
+      </div>
+      <style>{`
+        [contenteditable][data-placeholder]:empty:before {
+          content: attr(data-placeholder);
+          color: #9ca3af;
+          pointer-events: none;
+        }
+        [contenteditable]:not(:focus) h1 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; display: block; }
+        [contenteditable]:not(:focus) h2 { font-size: 1.3em; font-weight: bold; margin: 0.4em 0; display: block; }
+        [contenteditable]:not(:focus) h3 { font-size: 1.1em; font-weight: bold; margin: 0.3em 0; display: block; }
+        [contenteditable]:not(:focus) strong { font-weight: bold; }
+        [contenteditable]:not(:focus) em { font-style: italic; }
+        [contenteditable]:not(:focus) u { text-decoration: underline; }
+        [contenteditable]:not(:focus) del { text-decoration: line-through; }
+      `}</style>
     </div>
   );
 }
