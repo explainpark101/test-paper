@@ -29,6 +29,8 @@ export function parseMarkdown(text) {
   
   // 줄바꿈 처리
   html = html.replace(/\n/g, '<br>');
+
+  html = html.replace(/<\/h([1-3])>\s*<br>/g, '</h$1>');
   
   // XSS 방지: 허용된 태그만 유지하고 나머지는 이스케이프
   return DOMPurify.sanitize(html, {
