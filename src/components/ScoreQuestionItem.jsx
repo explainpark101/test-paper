@@ -51,6 +51,21 @@ function ScoreQuestionItem({
     document.execCommand('insertText', false, text);
   };
 
+  const handleMemoKeyDown = (e) => {
+    if (!memoRef.current) return;
+
+    // Ctrl+Enter: 다음 메모로 이동
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      const memos = document.querySelectorAll('.q-memo-input');
+      const next = memos[scoreInputIndex + 1];
+      if (next instanceof HTMLElement) {
+        next.focus();
+      }
+      return;
+    }
+  };
+
   return (
     <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4 items-stretch">
       <div className="flex flex-col items-center justify-center gap-1 w-20 shrink-0">
@@ -110,17 +125,7 @@ function ScoreQuestionItem({
         onBlur={handleMemoBlur}
         onInput={handleMemoInput}
         onPaste={handleMemoPaste}
-        onKeyDown={(e) => {
-          // Ctrl+Enter: 다음 메모로 이동
-          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            const memos = document.querySelectorAll('.q-memo-input');
-            const next = memos[scoreInputIndex + 1];
-            if (next instanceof HTMLElement) {
-              next.focus();
-            }
-          }
-        }}
+        onKeyDown={handleMemoKeyDown}
         style={{ 
           minHeight: '60px',
           whiteSpace: 'pre-wrap',

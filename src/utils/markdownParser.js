@@ -32,7 +32,7 @@ export function parseMarkdown(text) {
   
   // XSS 방지: 허용된 태그만 유지하고 나머지는 이스케이프
   return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'strong', 'em', 'u', 'del', 'br'],
+    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'strong', 'b', 'em', 'u', 'del', 'br'],
     ALLOWED_ATTR: []
   });
 }
