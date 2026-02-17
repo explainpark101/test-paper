@@ -101,7 +101,7 @@ function ScoreQuestionItem({
       />
       <div
         ref={memoRef}
-        className={`w-full p-5 rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] resize-none bg-white overflow-hidden ${
+        className={`q-memo-input w-full p-5 rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] resize-none bg-white overflow-hidden ${
           isFocused ? 'border-indigo-500' : 'border-gray-100'
         }`}
         contentEditable
@@ -110,6 +110,17 @@ function ScoreQuestionItem({
         onBlur={handleMemoBlur}
         onInput={handleMemoInput}
         onPaste={handleMemoPaste}
+        onKeyDown={(e) => {
+          // Ctrl+Enter: 다음 메모로 이동
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            const memos = document.querySelectorAll('.q-memo-input');
+            const next = memos[scoreInputIndex + 1];
+            if (next instanceof HTMLElement) {
+              next.focus();
+            }
+          }
+        }}
         style={{ 
           minHeight: '60px',
           whiteSpace: 'pre-wrap',
