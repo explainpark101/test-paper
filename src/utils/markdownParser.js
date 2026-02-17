@@ -53,11 +53,14 @@ export function parseMarkdown(text) {
 
   html = html.replace(/<\/h([1-3])>\s*<br>/g, '</h$1>');
   
-  // XSS 방지: 허용된 태그만 유지하고 나머지는 이스케이프
-  // KaTeX가 생성하는 span, math 태그도 허용
+  // XSS 방지: DOMPurify 기본 HTML + MathML 프로필 사용
+  // KaTeX가 생성하는 MathML 구조를 그대로 살리기 위해 ALLOWED_TAGS를 직접 제한하지 않고,
+  // USE_PROFILES로 html + mathml만 활성화
   return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'strong', 'b', 'em', 'u', 'del', 'br', 'span', 'math'],
-    ALLOWED_ATTR: ['class', 'aria-hidden', 'data-*']
+    USE_PROFILES: {
+      html: true,
+      mathml: true,
+    },
   });
 }
 
