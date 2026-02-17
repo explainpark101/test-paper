@@ -1,49 +1,155 @@
-import React from 'react';
-import { X, Printer } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Printer, Download, FileText } from 'lucide-react';
 import { parseMarkdown } from '../utils/markdownParser';
 
 /**
  * 채점 결과 인쇄 뷰
  * - 전체: 문항번호 | 내 답변 | 정답 (한 페이지에 많이)
  * - 틀린 문제만: 문항번호·내 답변·정답 크게, 페이지 나눔
+ * - 메모만: 메모만 출력 (MD 파일 추출 또는 프린트)
  */
 function PrintScoreView({ title, questions, onClose }) {
+  const [viewMode, setViewMode] = useState('full'); // 'full' | 'memo-only'
+  
   const wrongOnly = questions.filter(
     (q) => q.correctAnswer.trim() !== '' && q.userAnswer.trim() !== q.correctAnswer.trim()
   );
 
+  const memosOnly = questions.filter((q) => q.memo?.trim());
+
   const handlePrint = () => window.print();
+
+  const handleExportMD = () => {
+    let mdContent = `# ${title}\n\n## 메모 모음\n\n`;
+    
+    memosOnly.forEach((q, idx) => {
+      const questionNum = questions.indexOf(q) + 1;
+      mdContent += `### 문항 ${questionNum}\n\n`;
+      mdContent += `${q.memo}\n\n`;
+      mdContent += '---\n\n';
+    });
+
+    const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title}_메모_${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="print-view-container fixed inset-0 z-100 overflow-auto bg-gray-100 p-4 print:bg-white print:p-0">
       {/* 툴바: 화면에서만 표시 */}
-      <div className="no-print mb-4 flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm">
-        <h2 className="text-lg font-bold text-gray-800">인쇄 미리보기</h2>
-        <div className="flex gap-2">
+      <div className="no-print mb-4 flex flex-col gap-3 rounded-xl bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-800">인쇄 미리보기</h2>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <X className="w-4 h-4" /> 닫기
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 border-t border-gray-200 pt-3">
+          <span className="text-sm font-medium text-gray-600">모드:</span>
           <button
             type="button"
-            onClick={handlePrint}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            onClick={() => setViewMode('full')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              viewMode === 'full'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
           >
-            <Printer className="w-4 h-4" /> 인쇄
+            전체 채점 결과
           </button>
           <button
             type="button"
-            onClick={onClose}
-            className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            onClick={() => setViewMode('memo-only')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              viewMode === 'memo-only'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
           >
-            <X className="w-4 h-4" /> 닫기
+            메모만
           </button>
         </div>
+        {viewMode === 'memo-only' && (
+          <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
+            <button
+              type="button"
+              onClick={handleExportMD}
+              className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+            >
+              <Download className="w-4 h-4" /> MD 파일로 추출
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              <Printer className="w-4 h-4" /> 프린트
+            </button>
+          </div>
+        )}
+        {viewMode === 'full' && (
+          <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              <Printer className="w-4 h-4" /> 인쇄
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 인쇄용 본문 */}
       <div className="print-content mx-auto max-w-4xl rounded-xl bg-white p-6 shadow-sm print:max-w-none print:shadow-none print:p-4 print:pb-0">
-        <h1 className="mb-6 border-b border-gray-200 pb-2 text-xl font-bold text-gray-900 print:mb-4 print:text-lg">
-          채점 결과: {title}
-        </h1>
+        {viewMode === 'memo-only' ? (
+          <>
+            <h1 className="mb-6 border-b border-gray-200 pb-2 text-xl font-bold text-gray-900 print:mb-4 print:text-lg">
+              메모 모음: {title}
+            </h1>
+            {memosOnly.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                메모가 있는 문항이 없습니다.
+              </div>
+            ) : (
+              <div className="space-y-6 print:space-y-4">
+                {memosOnly.map((q, idx) => {
+                  const questionNum = questions.indexOf(q) + 1;
+                  return (
+                    <div
+                      key={idx}
+                      className="break-inside-avoid border-b border-gray-200 pb-4 print:pb-3"
+                    >
+                      <h2 className="mb-2 text-lg font-bold text-indigo-600 print:text-base">
+                        문항 {questionNum}
+                      </h2>
+                      <div
+                        className="text-gray-800 whitespace-pre-wrap"
+                        dangerouslySetInnerHTML={{ __html: parseMarkdown(q.memo) }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <h1 className="mb-6 border-b border-gray-200 pb-2 text-xl font-bold text-gray-900 print:mb-4 print:text-lg">
+              채점 결과: {title}
+            </h1>
 
-        {/* 1. 전체 채점 결과 (압축) */}
+            {/* 1. 전체 채점 결과 (압축) */}
         <section className="mb-8 print:mb-6">
           <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-indigo-600 print:mb-2 print:text-xs">
             전체 채점 결과
@@ -137,6 +243,8 @@ function PrintScoreView({ title, questions, onClose }) {
               })}
             </div>
           </section>
+        )}
+          </>
         )}
       </div>
     </div>
