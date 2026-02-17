@@ -181,7 +181,9 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
     CO: true,
     AX: true,
     BX: true,
-    CX: true
+    CX: true,
+    NO: true,
+    NX: true
   });
 
   // 마지막부터 연속으로 둘 다 비어 있는 문항은 채점 대상에서 제외
