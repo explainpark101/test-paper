@@ -53,6 +53,7 @@ function PrintScoreView({ title, questions, onClose }) {
                 <th className="w-14 py-1.5 text-left font-bold text-gray-600 print:py-1 print:w-12">No.</th>
                 <th className="p-1.5 text-left font-bold text-gray-600 print:p-1">내 답변</th>
                 <th className="p-1.5 text-left font-bold text-gray-600 print:p-1">정답</th>
+                <th className="p-1.5 text-left font-bold text-gray-600 print:p-1">메모</th>
               </tr>
             </thead>
             <tbody>
@@ -76,11 +77,14 @@ function PrintScoreView({ title, questions, onClose }) {
                         </span>
                       )}
                     </td>
-                    <td className="max-w-[45%] p-1.5 text-gray-700 print:p-1 print:leading-tight">
+                    <td className="max-w-[30%] p-1.5 text-gray-700 print:p-1 print:leading-tight">
                       {q.userAnswer || '—'}
                     </td>
-                    <td className="max-w-[45%] p-1.5 text-gray-700 print:p-1 print:leading-tight">
+                    <td className="max-w-[30%] p-1.5 text-gray-700 print:p-1 print:leading-tight">
                       {q.correctAnswer || '—'}
+                    </td>
+                    <td className="max-w-[30%] p-1.5 text-gray-700 print:p-1 print:leading-tight">
+                      {q.memo?.trim() || '—'}
                     </td>
                   </tr>
                 );
@@ -118,6 +122,12 @@ function PrintScoreView({ title, questions, onClose }) {
                       <span className="text-gray-800">{q.userAnswer || '—'}</span>
                       <span className="font-bold text-gray-500">정답:</span>
                       <span className="font-medium text-gray-900">{q.correctAnswer}</span>
+                      {q.memo?.trim() && (
+                        <>
+                          <span className="font-bold text-gray-500">메모:</span>
+                          <span className="text-gray-700 italic">{q.memo}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 );

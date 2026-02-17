@@ -8,29 +8,31 @@ function ScoreQuestionItem({
   isDiff, 
   questionState, 
   onUpdateCorrectAnswer, 
+  onUpdateMemo,
   onToggleStar,
   scoreInputIndex
 }) {
   return (
-    <div className="grid grid-cols-[auto_1fr_1fr] gap-4 items-stretch">
+    <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4 items-stretch">
       <div className="flex flex-col items-center justify-center gap-1 w-20 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">
-            <span>Question</span> 
-            <div class='flex gap-1 items-center'>
-              <span className="text-2xl font-black text-indigo-500">{displayNumber}</span>
-              {questionState && (
-                <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                  questionState === 'AO' || questionState === 'BO' || questionState === 'CO'
-                    ? 'bg-green-100 text-green-700'
-                    : questionState === 'AX' || questionState === 'BX' || questionState === 'CX'
-                    ? 'bg-red-100 text-red-700'
-                    : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {questionState}
-                </span>
-              )}
-            </div>
+            {questionState && (
+              <span className={`block text-xs font-bold px-2 py-0.5 rounded mt-1 ${
+                questionState === 'AO' || questionState === 'BO' || questionState === 'CO'
+                  ? 'bg-green-100 text-green-700'
+                  : questionState === 'AX' || questionState === 'BX' || questionState === 'CX'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-gray-100 text-gray-600'
+              }`}>
+                {questionState}
+              </span>
+            )}
+            {
+              <span class='flex gap-1 items-baseline'>
+                <span>Question</span> <span className="text-2xl font-black text-indigo-500">{displayNumber}</span>
+              </span>
+            }
           </span>
           <button
             onClick={() => onToggleStar(originalIndex)}
@@ -57,6 +59,12 @@ function ScoreQuestionItem({
           }
         }}
         placeholder="정답 입력 (Enter: 다음)..."
+      />
+      <textarea 
+        className="w-full p-5 rounded-2xl border-2 border-gray-100 outline-none text-sm transition-all min-h-[60px] resize-none focus:border-indigo-500 bg-white"
+        value={question.memo || ''}
+        onChange={(e) => onUpdateMemo(originalIndex, e.target.value)}
+        placeholder="메모..."
       />
     </div>
   );

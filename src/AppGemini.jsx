@@ -170,7 +170,7 @@ function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswe
   );
 }
 
-function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorrectAnswer, onResetAllCorrectAnswers, onToggleStar }) {
+function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorrectAnswer, onUpdateMemo, onResetAllCorrectAnswers, onToggleStar }) {
   const [rangeSize, setRangeSize] = useState(10);
   const [showPrintView, setShowPrintView] = useState(false);
   const [showOnlyStarred, setShowOnlyStarred] = useState(false);
@@ -437,7 +437,7 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
         </div>
       </details>
 
-      <div className="grid grid-cols-[auto_1fr_1fr] gap-4 items-center">
+      <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4 items-center">
         <div className="text-center font-bold text-gray-400 text-xs tracking-widest uppercase w-20 shrink-0">&nbsp;</div>
         <div className="text-center font-bold text-gray-400 text-xs tracking-widest uppercase">User Answer</div>
         <div className="flex items-center justify-center gap-2">
@@ -451,6 +451,7 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
             <RotateCcw className="w-3.5 h-3.5" /> 초기화
           </button>
         </div>
+        <div className="text-center font-bold text-gray-400 text-xs tracking-widest uppercase">Memo</div>
       </div>
 
       <div className="space-y-4">
@@ -469,6 +470,7 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
               isDiff={isDiff}
               questionState={questionState}
               onUpdateCorrectAnswer={onUpdateCorrectAnswer}
+              onUpdateMemo={onUpdateMemo}
               onToggleStar={onToggleStar}
               scoreInputIndex={idx}
             />
@@ -592,7 +594,7 @@ export default function App() {
       title: newTitle.trim(),
       subtitle: '',
       createdAt: Date.now(),
-      questions: [{ id: Date.now(), userAnswer: '', correctAnswer: '', type: 'input', starred: false, selectedOption: null }]
+      questions: [{ id: Date.now(), userAnswer: '', correctAnswer: '', type: 'input', starred: false, selectedOption: null, memo: '' }]
     };
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
@@ -634,7 +636,8 @@ export default function App() {
         correctAnswer: '',
         type: updatedPaper.questions[qIdx].type,
         starred: false,
-        selectedOption: null
+        selectedOption: null,
+        memo: ''
       });
     }
     setPapers((prev) => prev.map((p) => (p.id === activePaperId ? updatedPaper : p)));
@@ -652,6 +655,14 @@ export default function App() {
     const updatedPaper = { ...activePaper };
     updatedPaper.questions = [...updatedPaper.questions];
     updatedPaper.questions[qIdx] = { ...updatedPaper.questions[qIdx], correctAnswer: val };
+    setPapers((prev) => prev.map((p) => (p.id === activePaperId ? updatedPaper : p)));
+    savePaperToDB(updatedPaper);
+  };
+
+  const handleUpdateMemo = (qIdx, val) => {
+    const updatedPaper = { ...activePaper };
+    updatedPaper.questions = [...updatedPaper.questions];
+    updatedPaper.questions[qIdx] = { ...updatedPaper.questions[qIdx], memo: val };
     setPapers((prev) => prev.map((p) => (p.id === activePaperId ? updatedPaper : p)));
     savePaperToDB(updatedPaper);
   };
@@ -735,10 +746,11 @@ export default function App() {
               correctAnswer: typeof q?.correctAnswer === 'string' ? q.correctAnswer : '',
               type: q?.type === 'textarea' ? 'textarea' : 'input',
               starred: q?.starred === true,
-              selectedOption: q?.selectedOption === 'A' || q?.selectedOption === 'B' || q?.selectedOption === 'C' ? q.selectedOption : null
+              selectedOption: q?.selectedOption === 'A' || q?.selectedOption === 'B' || q?.selectedOption === 'C' ? q.selectedOption : null,
+              memo: typeof q?.memo === 'string' ? q.memo : ''
             }))
           };
-          if (paper.questions.length === 0) paper.questions = [{ id: base + i * 10000, userAnswer: '', correctAnswer: '', type: 'input', starred: false, selectedOption: null }];
+          if (paper.questions.length === 0) paper.questions = [{ id: base + i * 10000, userAnswer: '', correctAnswer: '', type: 'input', starred: false, selectedOption: null, memo: '' }];
           toAdd.push(paper);
         }
         const transaction = db.transaction(STORE_NAME, 'readwrite');
@@ -795,6 +807,7 @@ export default function App() {
         navigate={navigate}
         activePaperId={activePaperId}
         onUpdateCorrectAnswer={handleUpdateCorrectAnswer}
+        onUpdateMemo={handleUpdateMemo}
         onResetAllCorrectAnswers={handleResetAllCorrectAnswers}
         onToggleStar={handleToggleStar}
       />
@@ -802,7 +815,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-indigo-100 selection:text-indigo-900 pb-20">
-      <div className="max-w-4xl mx-auto p-6 md:p-12">
+      <div className="max-w-5xl mx-auto p-6 md:p-12">
         <header className="mb-12 flex justify-between items-center">
           <button 
             onClick={() => { setView('home'); setActivePaperId(null); navigate('/?'); }} 
