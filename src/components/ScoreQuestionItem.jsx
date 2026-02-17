@@ -115,7 +115,7 @@ function ScoreQuestionItem({
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word'
         }}
-        data-placeholder="메모... (Markdown: # heading, **bold**, *italic*, __underline__, ~~strikeline~~)"
+        data-placeholder="메모"
         dangerouslySetInnerHTML={isFocused ? undefined : { __html: parseMarkdown(question.memo || '') }}
       >
         {isFocused ? question.memo || '' : undefined}
