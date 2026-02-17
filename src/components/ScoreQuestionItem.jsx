@@ -34,6 +34,9 @@ function ScoreQuestionItem({
 
   const handleMemoBlur = () => {
     setIsFocused(false);
+    memoRef.current?.querySelectorAll('b').forEach(b => {
+      b.outerHTML = `**${b.innerText}**`;
+    });
     const text = memoRef.current?.innerText || '';
     onUpdateMemo(originalIndex, text);
   };
