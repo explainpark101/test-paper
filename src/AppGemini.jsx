@@ -423,6 +423,7 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
                   {<span className="text-red-600">CX {r.CX}</span>}  
                 </div>}
                 {
+                  r.NO + r.NX > 0 &&
                   <div class='flex gap-1.5'>
                     {r.NO > 0 && <span className="text-gray-400">NO{r.NO}</span>}
                     {r.NX > 0 && <span className="text-gray-400">NX{r.NX}</span>}
