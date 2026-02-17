@@ -20,11 +20,11 @@ function PrintScoreView({ title, questions, onClose }) {
   const handlePrint = () => window.print();
 
   const handleExportMD = () => {
-    let mdContent = `# ${title}\n\n## 메모 모음\n\n`;
+    let mdContent = `# \`${title}\` 메모 모음\n\n`;
     
     memosOnly.forEach((q, idx) => {
       const questionNum = questions.indexOf(q) + 1;
-      mdContent += `### 문항 ${questionNum}\n\n`;
+      mdContent += `# 문항 ${questionNum}\n\n`;
       mdContent += `${q.memo}\n\n`;
       mdContent += '---\n\n';
     });
