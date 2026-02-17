@@ -361,7 +361,7 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
           <span className="text-green-600 font-semibold">맞음 {stats.correct}개</span>
           <span className="text-red-500 font-semibold">틀림 {stats.wrong}개</span>
           <span className="text-gray-400 font-medium">미채점 {stats.pending}개</span>
-          <span className="text-gray-400 font-medium">총점 {(stats.correct / stats.total * 100).toFixed(2)}점</span>
+          <span className="text-green-600 font-medium">총점 {(stats.correct / stats.total * 100).toFixed(2)}점</span>
           
           {/* Tooltip */}
           <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none whitespace-nowrap z-50">
@@ -412,7 +412,7 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
                 <span className="text-green-600">✓{r.correct}</span>
                 <span className="text-red-500"> ✗{r.wrong}</span>
                 {r.pending > 0 && <span className="text-gray-400"> 미{r.pending}</span>}
-                <span className="text-red-500"> {(r.correct / (r.correct + r.wrong) * 100).toFixed(2)}점</span>
+                <span className="text-green-500"> {(r.correct / (r.correct + r.wrong) * 100).toFixed(2)}점</span>
                 {' '}
                 {<div class='flex gap-1.5'>
                   {<span className="text-green-600">AO {r.AO}</span>}
