@@ -223,18 +223,18 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
   const visibleQuestions = React.useMemo(() => {
     if (!effectiveQuestions.length) return [];
     
-    let filtered = effectiveQuestions;
+    let filtered = effectiveQuestions.map((q, idx) => ({ question: q, originalIndex: idx }));
     
     // 별표 필터링
     if (showOnlyStarred) {
-      filtered = filtered.filter((q) => q.starred);
+      filtered = filtered.filter((item) => item.question.starred);
     }
     
     // ABC 선택 필터링
     const allChecked = Object.values(filterChecks).every(v => v === true);
     if (!allChecked) {
-      filtered = filtered.filter((q) => {
-        const state = getQuestionState(q);
+      filtered = filtered.filter((item) => {
+        const state = getQuestionState(item.question);
         if (state === null) return true; // 미채점 항목은 항상 표시
         return filterChecks[state] === true;
       });
@@ -253,7 +253,8 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
     let correct = 0, wrong = 0, pending = 0;
     let AX = 0, BX = 0, CX = 0, AO = 0, BO = 0, CO = 0, NO = 0, NX = 0;
     
-    visibleQuestions.forEach((q) => {
+    visibleQuestions.forEach((item) => {
+      const q = item.question;
       const hasCorrect = q.correctAnswer.trim() !== '';
       const isCorrect = hasCorrect && q.userAnswer.trim() === q.correctAnswer.trim();
       const isWrong = hasCorrect && q.userAnswer.trim() !== q.correctAnswer.trim();
@@ -295,7 +296,8 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
       let correct = 0, wrong = 0, pending = 0;
       let AX = 0, BX = 0, CX = 0, AO = 0, BO = 0, CO = 0, NO = 0, NX = 0;
       for (let i = start; i < end; i++) {
-        const q = list[i];
+        const item = list[i];
+        const q = item.question;
         const state = getQuestionState(q);
         const hasCorrect = q.correctAnswer.trim() !== '';
         if (!hasCorrect) {
@@ -455,8 +457,9 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
       </div>
 
       <div className="space-y-4">
-        {visibleQuestions.map((q, idx) => {
-          const originalIndex = activePaper?.questions?.indexOf(q) ?? idx;
+        {visibleQuestions.map((item, idx) => {
+          const q = item.question;
+          const originalIndex = item.originalIndex;
           const displayNumber = originalIndex + 1;
           const isDiff = q.correctAnswer.trim() !== '' && q.userAnswer.trim() !== q.correctAnswer.trim();
           const questionState = getQuestionState(q);
