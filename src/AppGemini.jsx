@@ -115,7 +115,7 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
                   <h3 className="font-bold text-gray-800 dark:text-gray-100">{p.title}</h3>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{dateStr} {timeStr} | {p.questions.length}개 문항</p>
                 </div>
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-2">
                   <button onClick={() => { setActivePaperId(p.id); setView('exam'); navigate(`/?id=${p.id}&view=exam`); }} className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-gray-700 rounded-lg shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-800">
                     <Play className="w-4 h-4" />
                   </button>
@@ -136,12 +136,17 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
   );
 }
 
-function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswer, onToggleType, onToggleStar, focusNextInput, onUpdateSelectedOption }) {
+function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswer, onToggleType, onToggleStar, focusNextInput, onUpdateSelectedOption, onUpdateTitle }) {
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-end bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{activePaper?.title}</h2>
+        <div className="flex-1">
+          <input
+            type="text"
+            value={activePaper?.title || ''}
+            onChange={(e) => onUpdateTitle(e.target.value)}
+            className="text-2xl font-bold text-gray-900 dark:text-gray-100 bg-transparent border-transparent outline-none w-full focus:border-b-2 focus:border-indigo-500 dark:focus:border-indigo-400 transition-colors"
+          />
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">{activePaper?.subtitle || '시험 모드'}</p>
         </div>
         <button 
@@ -714,6 +719,13 @@ export default function App() {
     savePaperToDB(updatedPaper);
   };
 
+  const handleUpdateTitle = (newTitle) => {
+    if (!activePaper) return;
+    const updatedPaper = { ...activePaper, title: newTitle };
+    setPapers((prev) => prev.map((p) => (p.id === activePaperId ? updatedPaper : p)));
+    savePaperToDB(updatedPaper);
+  };
+
   const handleExportJSON = () => {
     const blob = new Blob([JSON.stringify(papers, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -802,6 +814,7 @@ export default function App() {
         onToggleStar={handleToggleStar}
         focusNextInput={focusNextInput}
         onUpdateSelectedOption={handleUpdateSelectedOption}
+        onUpdateTitle={handleUpdateTitle}
       />
     ) : (
       <ScoreView
