@@ -56,6 +56,49 @@ const initDB = () => {
 
 // --- View components (declared outside App to avoid re-creation on every render) ---
 function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, importInputRef }) {
+  // 각 문제지의 채점 결과를 계산하는 함수
+  const calculateScoreStats = (paper) => {
+    if (!paper || !paper.questions) {
+      return { AO: 0, BO: 0, CO: 0, NO: 0, AX: 0, BX: 0, CX: 0, NX: 0, pending: 0, total: 0 };
+    }
+
+    let AO = 0, BO = 0, CO = 0, NO = 0;
+    let AX = 0, BX = 0, CX = 0, NX = 0;
+    let pending = 0;
+    let total = 0;
+
+    paper.questions.forEach((q) => {
+      const hasCorrect = q.correctAnswer.trim() !== '';
+      const hasUserAnswer = q.userAnswer.trim() !== '';
+      
+      // 둘 다 비어있으면 제외
+      if (!hasCorrect && !hasUserAnswer) return;
+      
+      total++;
+      
+      if (!hasCorrect) {
+        pending++;
+        return;
+      }
+
+      const isCorrect = q.userAnswer.trim() === q.correctAnswer.trim();
+      const selectedOption = q.selectedOption || null;
+
+      if (isCorrect) {
+        if (selectedOption === 'A') AO++;
+        else if (selectedOption === 'B') BO++;
+        else if (selectedOption === 'C') CO++;
+        else NO++;
+      } else {
+        if (selectedOption === 'A') AX++;
+        else if (selectedOption === 'B') BX++;
+        else if (selectedOption === 'C') CX++;
+        else NX++;
+      }
+    });
+
+    return { AO, BO, CO, NO, AX, BX, CX, NX, pending, total };
+  };
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -109,11 +152,34 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
               const createdDate = new Date(p.createdAt);
               const dateStr = `${createdDate.getFullYear()}-${String(createdDate.getMonth() + 1).padStart(2, '0')}-${String(createdDate.getDate()).padStart(2, '0')}`;
               const timeStr = `${String(createdDate.getHours()).padStart(2, '0')}:${String(createdDate.getMinutes()).padStart(2, '0')}`;
+              const stats = calculateScoreStats(p);
+              const hasScore = stats.total > 0;
               return (
               <div key={p.id} className="group flex items-center justify-between p-5 border border-gray-100 dark:border-gray-700 rounded-xl hover:border-indigo-200 dark:hover:border-indigo-600 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/30 transition-all">
-                <div>
+                <div className="flex-1">
                   <h3 className="font-bold text-gray-800 dark:text-gray-100">{p.title}</h3>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{dateStr} {timeStr} | {p.questions.length}개 문항</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    {p.subtitle && <span className="mr-2">{p.subtitle}</span>}
+                    {dateStr} {timeStr} | {p.questions.length}개 문항
+                  </p>
+                  {hasScore && (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs mt-2">
+                      {<span className="text-green-600 dark:text-green-400">AO {stats.AO}</span>}
+                      {<span className="text-green-600 dark:text-green-400">BO {stats.BO}</span>}
+                      {<span className="text-green-600 dark:text-green-400">CO {stats.CO}</span>}
+                      {<span className="text-red-600 dark:text-red-400">AX {stats.AX}</span>}
+                      {<span className="text-red-600 dark:text-red-400">BX {stats.BX}</span>}
+                      {<span className="text-red-600 dark:text-red-400">CX {stats.CX}</span>}
+                      {stats.NO > 0 && <span className="text-gray-500 dark:text-gray-400">NO {stats.NO}</span>}
+                      {stats.NX > 0 && <span className="text-gray-500 dark:text-gray-400">NX {stats.NX}</span>}
+                      {stats.pending > 0 && <span className="text-gray-400 dark:text-gray-500">미채점 {stats.pending}</span>}
+                      {stats.total > 0 && (
+                        <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
+                          총점 {((stats.AO + stats.BO + stats.CO + stats.NO) / stats.total * 100).toFixed(1)}점
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => { setActivePaperId(p.id); setView('exam'); navigate(`/?id=${p.id}&view=exam`); }} className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-gray-700 rounded-lg shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-800">
@@ -136,7 +202,7 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
   );
 }
 
-function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswer, onToggleType, onToggleStar, focusNextInput, onUpdateSelectedOption, onUpdateTitle, onSetAllUncheckedToA }) {
+function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswer, onToggleType, onToggleStar, focusNextInput, onUpdateSelectedOption, onUpdateTitle, onUpdateSubtitle, onSetAllUncheckedToA }) {
   // ABC가 체크되지 않고 input이 비어있지 않은 항목이 있는지 확인
   const hasUncheckedWithInput = activePaper?.questions.some(
     (q) => !q.selectedOption && q.userAnswer.trim() !== ''
@@ -152,7 +218,13 @@ function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswe
             onChange={(e) => onUpdateTitle(e.target.value)}
             className="text-2xl font-bold text-gray-900 dark:text-gray-100 bg-transparent border-transparent outline-none w-full focus:border-b-2 focus:border-indigo-500 dark:focus:border-indigo-400 transition-colors"
           />
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">{activePaper?.subtitle || '시험 모드'}</p>
+          <input
+            type="text"
+            value={activePaper?.subtitle || ''}
+            onChange={(e) => onUpdateSubtitle(e.target.value)}
+            placeholder="소제목 입력 (선택사항)"
+            className="text-sm text-gray-400 dark:text-gray-500 mt-1 bg-transparent border-transparent outline-none w-full focus:border-b-2 focus:border-indigo-500 dark:focus:border-indigo-400 transition-colors placeholder-gray-400 dark:placeholder-gray-500"
+          />
         </div>
         <div className="flex gap-2">
           {hasUncheckedWithInput && (
@@ -190,7 +262,7 @@ function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswe
   );
 }
 
-function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorrectAnswer, onUpdateMemo, onResetAllCorrectAnswers, onToggleStar }) {
+function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorrectAnswer, onUpdateMemo, onResetAllCorrectAnswers, onToggleStar, onUpdateTitle, onUpdateSubtitle }) {
   const [rangeSize, setRangeSize] = useState(10);
   const [showPrintView, setShowPrintView] = useState(false);
   const [showOnlyStarred, setShowOnlyStarred] = useState(false);
@@ -344,8 +416,23 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-end bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">채점: {activePaper?.title}</h2>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">채점:</span>
+            <input
+              type="text"
+              value={activePaper?.title || ''}
+              onChange={(e) => onUpdateTitle(e.target.value)}
+              className="text-2xl font-bold text-gray-900 dark:text-gray-100 bg-transparent border-transparent outline-none flex-1 focus:border-b-2 focus:border-indigo-500 dark:focus:border-indigo-400 transition-colors"
+            />
+          </div>
+          <input
+            type="text"
+            value={activePaper?.subtitle || ''}
+            onChange={(e) => onUpdateSubtitle(e.target.value)}
+            placeholder="소제목 입력 (선택사항)"
+            className="text-sm text-gray-400 dark:text-gray-500 mt-1 bg-transparent border-transparent outline-none w-full focus:border-b-2 focus:border-indigo-500 dark:focus:border-indigo-400 transition-colors placeholder-gray-400 dark:placeholder-gray-500"
+          />
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">좌측: 내 답변 | 우측: 실제 정답 입력</p>
         </div>
         <div className="flex gap-2">
@@ -741,6 +828,13 @@ export default function App() {
     savePaperToDB(updatedPaper);
   };
 
+  const handleUpdateSubtitle = (newSubtitle) => {
+    if (!activePaper) return;
+    const updatedPaper = { ...activePaper, subtitle: newSubtitle };
+    setPapers((prev) => prev.map((p) => (p.id === activePaperId ? updatedPaper : p)));
+    savePaperToDB(updatedPaper);
+  };
+
   const handleSetAllUncheckedToA = () => {
     if (!activePaper) return;
     const updatedPaper = { ...activePaper };
@@ -844,6 +938,7 @@ export default function App() {
         focusNextInput={focusNextInput}
         onUpdateSelectedOption={handleUpdateSelectedOption}
         onUpdateTitle={handleUpdateTitle}
+        onUpdateSubtitle={handleUpdateSubtitle}
         onSetAllUncheckedToA={handleSetAllUncheckedToA}
       />
     ) : (
@@ -856,6 +951,8 @@ export default function App() {
         onUpdateMemo={handleUpdateMemo}
         onResetAllCorrectAnswers={handleResetAllCorrectAnswers}
         onToggleStar={handleToggleStar}
+        onUpdateTitle={handleUpdateTitle}
+        onUpdateSubtitle={handleUpdateSubtitle}
       />
     );
 
