@@ -23,6 +23,7 @@ import RadioToggle from './components/RadioToggle';
 import ExamQuestionItem from './components/ExamQuestionItem';
 import ScoreQuestionItem from './components/ScoreQuestionItem';
 import ScoreFilterCheckboxes from './components/ScoreFilterCheckboxes';
+import ConfirmModal from './components/ConfirmModal';
 
 // Base path from environment variable
 const BASE_PATH = import.meta.env.VITE_BASE_PATH || '/';
@@ -55,7 +56,7 @@ const initDB = () => {
 };
 
 // --- View components (declared outside App to avoid re-creation on every render) ---
-function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, importInputRef }) {
+function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, importInputRef, copyModalOpen, copyModalPaperId, onOpenCopyModal, onCloseCopyModal, onConfirmCopy, deleteModalOpen, deleteModalPaperId, onOpenDeleteModal, onCloseDeleteModal, onConfirmDelete }) {
   // 각 문제지의 채점 결과를 계산하는 함수
   const calculateScoreStats = (paper) => {
     if (!paper || !paper.questions) {
@@ -185,10 +186,10 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
                   <button onClick={() => { setActivePaperId(p.id); setView('exam'); navigate(`/?id=${p.id}&view=exam`); }} className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-gray-700 rounded-lg shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-800">
                     <Play className="w-4 h-4" />
                   </button>
-                  <button onClick={() => onCopyPaper(p.id)} className="p-2 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 rounded-lg shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600">
+                  <button onClick={() => onOpenCopyModal(p.id)} className="p-2 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 rounded-lg shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600">
                     <Copy className="w-4 h-4" />
                   </button>
-                  <button onClick={() => onDeletePaper(p.id)} className="p-2 text-red-500 dark:text-red-400 hover:bg-white dark:hover:bg-gray-700 rounded-lg shadow-sm border border-transparent hover:border-red-100 dark:hover:border-red-900">
+                  <button onClick={() => onOpenDeleteModal(p.id)} className="p-2 text-red-500 dark:text-red-400 hover:bg-white dark:hover:bg-gray-700 rounded-lg shadow-sm border border-transparent hover:border-red-100 dark:hover:border-red-900">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -198,6 +199,30 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
           )}
         </div>
       </div>
+
+      {/* Copy Modal */}
+      <ConfirmModal
+        isOpen={copyModalOpen}
+        onClose={onCloseCopyModal}
+        onConfirm={onConfirmCopy}
+        title="문제지 복사"
+        message={`"${papers.find(p => p.id === copyModalPaperId)?.title || ''}" 문제지를 복사하시겠습니까?`}
+        confirmText="복사"
+        cancelText="취소"
+        type="default"
+      />
+
+      {/* Delete Modal */}
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={onCloseDeleteModal}
+        onConfirm={onConfirmDelete}
+        title="문제지 삭제"
+        message={`"${papers.find(p => p.id === deleteModalPaperId)?.title || ''}" 문제지를 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
+        confirmText="삭제"
+        cancelText="취소"
+        type="danger"
+      />
     </div>
   );
 }
@@ -603,6 +628,10 @@ export default function App() {
   const [view, setView] = useState('home'); // 'home', 'exam', 'score'
   const [newTitle, setNewTitle] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [copyModalPaperId, setCopyModalPaperId] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteModalPaperId, setDeleteModalPaperId] = useState(null);
 
   const refreshPapers = (database) => {
     const transaction = database.transaction(STORE_NAME, 'readonly');
@@ -680,7 +709,7 @@ export default function App() {
   };
 
   const deletePaperFromDB = (id) => {
-    if (!db || !confirm('정말 삭제하시겠습니까?')) return;
+    if (!db) return;
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const request = store.delete(id);
@@ -730,6 +759,38 @@ export default function App() {
       createdAt: now.getTime()
     };
     savePaperToDB(copy);
+  };
+
+  const handleOpenCopyModal = (id) => {
+    setCopyModalPaperId(id);
+    setCopyModalOpen(true);
+  };
+
+  const handleCloseCopyModal = () => {
+    setCopyModalOpen(false);
+    setCopyModalPaperId(null);
+  };
+
+  const handleConfirmCopy = () => {
+    if (copyModalPaperId) {
+      handleCopyPaper(copyModalPaperId);
+    }
+  };
+
+  const handleOpenDeleteModal = (id) => {
+    setDeleteModalPaperId(id);
+    setDeleteModalOpen(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setDeleteModalPaperId(null);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteModalPaperId) {
+      deletePaperFromDB(deleteModalPaperId);
+    }
   };
 
   const handleUpdateAnswer = (qIdx, val) => {
@@ -925,6 +986,16 @@ export default function App() {
         onExportJSON={handleExportJSON}
         onImportJSON={handleImportJSON}
         importInputRef={importInputRef}
+        copyModalOpen={copyModalOpen}
+        copyModalPaperId={copyModalPaperId}
+        onOpenCopyModal={handleOpenCopyModal}
+        onCloseCopyModal={handleCloseCopyModal}
+        onConfirmCopy={handleConfirmCopy}
+        deleteModalOpen={deleteModalOpen}
+        deleteModalPaperId={deleteModalPaperId}
+        onOpenDeleteModal={handleOpenDeleteModal}
+        onCloseDeleteModal={handleCloseDeleteModal}
+        onConfirmDelete={handleConfirmDelete}
       />
     ) : view === 'exam' ? (
       <ExamView
