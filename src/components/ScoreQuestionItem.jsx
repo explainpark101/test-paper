@@ -73,39 +73,39 @@ function ScoreQuestionItem({
     <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4 items-stretch">
       <div className="flex flex-col items-center justify-center gap-1 w-20 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">
+          <span className="text-xs font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest">
             {questionState && (
               <span className={`block text-xs font-bold px-2 py-0.5 rounded mt-1 ${
                 questionState === 'AO' || questionState === 'BO' || questionState === 'CO'
-                  ? 'bg-green-100 text-green-700'
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
                   : questionState === 'AX' || questionState === 'BX' || questionState === 'CX'
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-gray-100 text-gray-600'
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
               }`}>
                 {questionState}
               </span>
             )}
             {
-              <span class='flex gap-1 items-baseline'>
-                <span>Question</span> <span className="text-2xl font-black text-indigo-500">{displayNumber}</span>
+              <span className='flex gap-1 items-baseline'>
+                <span>Question</span> <span className="text-2xl font-black text-indigo-500 dark:text-indigo-400">{displayNumber}</span>
               </span>
             }
           </span>
           <button
             onClick={() => onToggleStar(originalIndex)}
-            className="p-1 hover:bg-yellow-50 rounded transition-colors cursor-pointer"
+            className="p-1 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded transition-colors cursor-pointer"
             title={question.starred ? '별표 제거' : '별표 추가'}
           >
-            <Star className={`w-3.5 h-3.5 ${question.starred ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-yellow-400'}`} />
+            <Star className={`w-3.5 h-3.5 ${question.starred ? 'fill-yellow-400 dark:fill-yellow-500 text-yellow-400 dark:text-yellow-500' : 'text-gray-300 dark:text-gray-600 hover:text-yellow-400 dark:hover:text-yellow-500'}`} />
           </button>
         </div>
         
       </div>
-      <div className={`p-5 rounded-2xl text-sm whitespace-pre-wrap flex items-center transition-all ${isDiff ? 'bg-red-50 border-2 border-red-100 text-red-900 shadow-inner' : 'bg-gray-100 text-gray-600'}`}>
-        {question.userAnswer || <span className="text-gray-300 italic">입력 없음</span>}
+      <div className={`p-5 rounded-2xl text-sm whitespace-pre-wrap flex items-center transition-all ${isDiff ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-100 dark:border-red-800 text-red-900 dark:text-red-200 shadow-inner' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>
+        {question.userAnswer || <span className="text-gray-300 dark:text-gray-600 italic">입력 없음</span>}
       </div>
       <textarea 
-        className={`q-score-input w-full p-5 rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] resize-none ${isDiff ? 'border-red-400 bg-white text-red-600 focus:ring-2 focus:ring-red-100' : 'border-gray-100 focus:border-green-500 bg-white'}`}
+        className={`q-score-input w-full p-5 rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] resize-none ${isDiff ? 'border-red-400 dark:border-red-500 bg-white dark:bg-gray-800 text-red-600 dark:text-red-300 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/50' : 'border-gray-100 dark:border-gray-700 focus:border-green-500 dark:focus:border-green-400 bg-white dark:bg-gray-800 dark:text-gray-100'}`}
         value={question.correctAnswer}
         onChange={(e) => onUpdateCorrectAnswer(originalIndex, e.target.value)}
         onKeyDown={(e) => {
@@ -119,8 +119,8 @@ function ScoreQuestionItem({
       />
       <div
         ref={memoRef}
-        className={`q-memo-input w-full p-5 rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] resize-none bg-white overflow-hidden ${
-          isFocused ? 'border-indigo-500' : 'border-gray-100'
+        className={`q-memo-input w-full p-5 rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] resize-none bg-white dark:bg-gray-800 overflow-hidden dark:text-gray-100 ${
+          isFocused ? 'border-indigo-500 dark:border-indigo-400' : 'border-gray-100 dark:border-gray-700'
         }`}
         contentEditable
         suppressContentEditableWarning
@@ -144,6 +144,9 @@ function ScoreQuestionItem({
           content: attr(data-placeholder);
           color: #9ca3af;
           pointer-events: none;
+        }
+        .dark [contenteditable][data-placeholder]:empty:before {
+          color: #6b7280;
         }
         [contenteditable]:not(:focus) h1 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; display: block; }
         [contenteditable]:not(:focus) h2 { font-size: 1.3em; font-weight: bold; margin: 0.4em 0; display: block; }

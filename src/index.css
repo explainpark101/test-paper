@@ -177,3 +177,7 @@ em {
     padding-bottom: 0;
   }
 }
+
+button {
+  cursor: pointer;
+}

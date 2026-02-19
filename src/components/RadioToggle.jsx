@@ -11,8 +11,8 @@ function RadioToggle({ value, onChange, options = ['A', 'B', 'C'] }) {
           className={`
             w-10 h-10 rounded-lg font-bold text-sm transition-all cursor-pointer
             ${value === option
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-md shadow-indigo-200 dark:shadow-indigo-900/50'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
             }
           `}
         >

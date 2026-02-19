@@ -69,17 +69,17 @@ function RangeSizeSelect({ value, onChange, max = 9999 }) {
       <button
         type="button"
         onClick={() => setIsOpen((o) => !o)}
-        className="flex items-center gap-1.5 min-w-28 text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white hover:border-indigo-300 hover:bg-gray-50 transition-colors text-left cursor-pointer"
+        className="flex items-center gap-1.5 min-w-28 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left cursor-pointer"
       >
-        <span className="flex-1 font-medium text-gray-700">{displayLabel}</span>
+        <span className="flex-1 font-medium text-gray-700 dark:text-gray-300">{displayLabel}</span>
         <ChevronDown
-          className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
       {/* 드롭다운 패널 */}
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-56 py-1 rounded-xl bg-white border border-gray-200 shadow-lg">
+        <div className="absolute left-0 top-full mt-1 z-50 w-56 py-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
           {PRESETS.map((n) => (
             <button
               key={n}
@@ -87,24 +87,24 @@ function RangeSizeSelect({ value, onChange, max = 9999 }) {
               onClick={() => handlePresetClick(n)}
               className={`w-full px-3 py-2.5 text-left text-sm font-medium transition-colors ${
                 isPreset && value === n
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {n}개 단위
             </button>
           ))}
-          <div className="border-t border-gray-100 mt-1 pt-1">
+          <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
             <div
               className={`flex items-center gap-2 px-3 py-2.5 ${
-                !isPreset ? 'bg-indigo-50' : 'hover:bg-gray-100'
+                !isPreset ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               <button
                 type="button"
                 onClick={handleCustomClick}
                 className={`text-left text-sm font-medium flex-1 ${
-                  !isPreset ? 'text-indigo-700' : 'text-gray-700'
+                  !isPreset ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'
                 }`}
               >
                 직접 입력
@@ -117,7 +117,7 @@ function RangeSizeSelect({ value, onChange, max = 9999 }) {
                 onChange={handleCustomInputChange}
                 onBlur={handleCustomInputBlur}
                 onClick={(e) => e.stopPropagation()}
-                className="w-14 text-sm border border-gray-200 rounded-lg px-2 py-1 text-center focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-14 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 text-center focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 dark:focus:ring-indigo-900/50 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 aria-label="구간 크기"
               />
             </div>
