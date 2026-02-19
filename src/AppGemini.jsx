@@ -136,7 +136,12 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
   );
 }
 
-function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswer, onToggleType, onToggleStar, focusNextInput, onUpdateSelectedOption, onUpdateTitle }) {
+function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswer, onToggleType, onToggleStar, focusNextInput, onUpdateSelectedOption, onUpdateTitle, onSetAllUncheckedToA }) {
+  // ABC가 체크되지 않고 input이 비어있지 않은 항목이 있는지 확인
+  const hasUncheckedWithInput = activePaper?.questions.some(
+    (q) => !q.selectedOption && q.userAnswer.trim() !== ''
+  ) || false;
+
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-end bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -149,12 +154,22 @@ function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswe
           />
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">{activePaper?.subtitle || '시험 모드'}</p>
         </div>
-        <button 
-          onClick={() => { setView('score'); navigate(`/?id=${activePaperId}&view=score`); }}
-          className="bg-green-600 dark:bg-green-700 cursor-pointer text-white px-5 py-2.5 rounded-xl hover:bg-green-700 dark:hover:bg-green-600 transition-all flex items-center gap-2 shadow-lg shadow-green-100 dark:shadow-green-900/50"
-        >
-          <CheckCircle className="w-4 h-4" /> 채점 모드 전환
-        </button>
+        <div className="flex gap-2">
+          {hasUncheckedWithInput && (
+            <button 
+              onClick={onSetAllUncheckedToA}
+              className="bg-indigo-600 dark:bg-indigo-500 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all flex items-center gap-2 shadow-lg shadow-indigo-100 dark:shadow-indigo-900/50 text-sm"
+            >
+              ABCON 입력안 한 거 전부 A로 체크
+            </button>
+          )}
+          <button 
+            onClick={() => { setView('score'); navigate(`/?id=${activePaperId}&view=score`); }}
+            className="bg-green-600 dark:bg-green-700 cursor-pointer text-white px-5 py-2.5 rounded-xl hover:bg-green-700 dark:hover:bg-green-600 transition-all flex items-center gap-2 shadow-lg shadow-green-100 dark:shadow-green-900/50"
+          >
+            <CheckCircle className="w-4 h-4" /> 채점 모드 전환
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -726,6 +741,20 @@ export default function App() {
     savePaperToDB(updatedPaper);
   };
 
+  const handleSetAllUncheckedToA = () => {
+    if (!activePaper) return;
+    const updatedPaper = { ...activePaper };
+    updatedPaper.questions = activePaper.questions.map((q) => {
+      // ABC가 체크되지 않고 input이 비어있지 않은 항목만 'A'로 설정
+      if (!q.selectedOption && q.userAnswer.trim() !== '') {
+        return { ...q, selectedOption: 'A' };
+      }
+      return q;
+    });
+    setPapers((prev) => prev.map((p) => (p.id === activePaperId ? updatedPaper : p)));
+    savePaperToDB(updatedPaper);
+  };
+
   const handleExportJSON = () => {
     const blob = new Blob([JSON.stringify(papers, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -815,6 +844,7 @@ export default function App() {
         focusNextInput={focusNextInput}
         onUpdateSelectedOption={handleUpdateSelectedOption}
         onUpdateTitle={handleUpdateTitle}
+        onSetAllUncheckedToA={handleSetAllUncheckedToA}
       />
     ) : (
       <ScoreView
