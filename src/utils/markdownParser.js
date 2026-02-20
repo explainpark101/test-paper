@@ -11,7 +11,7 @@ import 'katex/dist/katex.min.css';
 export function parseMarkdown(text) {
   if (!text) return '';
   
-  let html = text;
+  let html = text.trim();
   
   // LaTeX 블록 수식: $$...$$ (먼저 처리해야 함)
   html = html.replace(/\$\$([^$]+)\$\$/g, (match, formula) => {
