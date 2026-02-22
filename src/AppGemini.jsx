@@ -507,13 +507,13 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
           </div>
         </summary>
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs border-t border-gray-100 dark:border-gray-700 pt-3">
-          <span className="font-semibold text-gray-600 dark:text-gray-400">ABCi:</span>
-          <span className="text-red-600 dark:text-red-400">AX {stats.AX}</span>
-          <span className="text-red-600 dark:text-red-400">BX {stats.BX}</span>
-          <span className="text-red-600 dark:text-red-400">CX {stats.CX}</span>
+          <span className="font-semibold text-gray-600 dark:text-gray-400">ABCon:</span>
           <span className="text-green-600 dark:text-green-400">AO {stats.AO}</span>
           <span className="text-green-600 dark:text-green-400">BO {stats.BO}</span>
           <span className="text-green-600 dark:text-green-400">CO {stats.CO}</span>
+          <span className="text-red-600 dark:text-red-400">AX {stats.AX}</span>
+          <span className="text-red-600 dark:text-red-400">BX {stats.BX}</span>
+          <span className="text-red-600 dark:text-red-400">CX {stats.CX}</span>
           <span className="text-gray-400 dark:text-gray-500">NO {stats.NO}</span>
           <span className="text-gray-400 dark:text-gray-500">NX {stats.NX}</span>
         </div>
