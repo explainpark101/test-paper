@@ -31,6 +31,9 @@ import ScoreQuestionItem from './components/ScoreQuestionItem';
 import ScoreFilterCheckboxes from './components/ScoreFilterCheckboxes';
 import ConfirmModal from './components/ConfirmModal';
 import HowToView from './components/HowToView';
+import Toast from './components/Toast';
+import PasswordConfirmModal from './components/PasswordConfirmModal';
+import { encryptMasterToken, decryptMasterToken } from './utils/masterTokenCrypto';
 
 // Base path from environment variable
 const BASE_PATH = import.meta.env.VITE_BASE_PATH || '/';
@@ -631,6 +634,7 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
 
 const CLOUD_WORKER_URL_KEY = 'exam_cloud_worker_url';
 const CLOUD_MASTER_TOKEN_KEY = 'exam_cloud_master_token';
+const CLOUD_MASTER_TOKEN_ENCRYPTED_KEY = 'exam_cloud_master_token_encrypted';
 const EXAM_CLOUD_KV_KEY = 'papers';
 
 function SettingsView({ workerUrl, masterToken, onWorkerUrlChange, onMasterTokenChange, onSave, onTestConnection, setView, navigate }) {
@@ -751,8 +755,14 @@ export default function App() {
   const [copyModalPaperId, setCopyModalPaperId] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteModalPaperId, setDeleteModalPaperId] = useState(null);
-  const [cloudWorkerUrl, setCloudWorkerUrl] = useState(() => typeof sessionStorage !== 'undefined' ? (sessionStorage.getItem(CLOUD_WORKER_URL_KEY) || '') : '');
-  const [cloudMasterToken, setCloudMasterToken] = useState(() => typeof sessionStorage !== 'undefined' ? (sessionStorage.getItem(CLOUD_MASTER_TOKEN_KEY) || '') : '');
+  const [cloudWorkerUrl, setCloudWorkerUrl] = useState(() => typeof localStorage !== 'undefined' ? (localStorage.getItem(CLOUD_WORKER_URL_KEY) || '') : '');
+  const [cloudMasterToken, setCloudMasterToken] = useState(() => {
+    if (typeof sessionStorage === 'undefined') return '';
+    return sessionStorage.getItem(CLOUD_MASTER_TOKEN_KEY) || '';
+  });
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [showSavePasswordModal, setShowSavePasswordModal] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
 
   const refreshPapers = (database) => {
     const transaction = database.transaction(STORE_NAME, 'readonly');
@@ -772,6 +782,65 @@ export default function App() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // MASTER_TOKEN이 있으면 진입 시 클라우드에서 불러와 동일 id만 로컬에 반영
+  useEffect(() => {
+    if (!db || !getCloudKV()) return;
+    if (hasAutoLoadedCloudRef.current) return;
+    hasAutoLoadedCloudRef.current = true;
+    skipNextDebounceRef.current = true;
+    const kv = getCloudKV();
+    kv.readData(EXAM_CLOUD_KV_KEY)
+      .then((record) => mergeCloudIntoLocal(record))
+      .then(() => {
+        skipNextDebounceRef.current = true;
+        addToast('클라우드에서 불러왔습니다.');
+      })
+      .catch(() => {});
+  }, [db, cloudWorkerUrl, cloudMasterToken]);
+
+  // 로컬 변경 후 5초 디바운스 뒤 자동 클라우드 저장
+  useEffect(() => {
+    if (skipNextDebounceRef.current) {
+      skipNextDebounceRef.current = false;
+      return;
+    }
+    const kv = getCloudKV();
+    if (!kv) return;
+    if (debounceSaveTimerRef.current) clearTimeout(debounceSaveTimerRef.current);
+    setDebounceKey(Date.now());
+    setDebouncePending(true);
+    debounceSaveTimerRef.current = setTimeout(() => {
+      debounceSaveTimerRef.current = null;
+      setDebouncePending(false);
+      const toSave = papersRef.current;
+      kv.updateData(EXAM_CLOUD_KV_KEY, toSave).then(() => addToast('클라우드에 저장되었습니다.')).catch(() => {});
+    }, 5000);
+    return () => {
+      if (debounceSaveTimerRef.current) clearTimeout(debounceSaveTimerRef.current);
+      setDebouncePending(false);
+    };
+  }, [papers]);
+
+  // Ctrl+S / Cmd+S: 디바운스 취소 후 즉시 클라우드 저장
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (debounceSaveTimerRef.current) {
+          clearTimeout(debounceSaveTimerRef.current);
+          debounceSaveTimerRef.current = null;
+          setDebouncePending(false);
+        }
+        const kv = getCloudKV();
+        if (!kv) return;
+        const toSave = papersRef.current;
+        kv.updateData(EXAM_CLOUD_KV_KEY, toSave).then(() => addToast('클라우드에 저장되었습니다.')).catch(() => {});
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cloudWorkerUrl, cloudMasterToken]);
 
   // 기존 /paper/:id(/:view) 주소로 들어온 경우, search parameter 형식으로 리다이렉트
   useEffect(() => {
@@ -1103,13 +1172,29 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (typeof sessionStorage === 'undefined') return;
-    sessionStorage.setItem(CLOUD_WORKER_URL_KEY, cloudWorkerUrl);
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(CLOUD_WORKER_URL_KEY, cloudWorkerUrl);
   }, [cloudWorkerUrl]);
   useEffect(() => {
     if (typeof sessionStorage === 'undefined') return;
     sessionStorage.setItem(CLOUD_MASTER_TOKEN_KEY, cloudMasterToken);
   }, [cloudMasterToken]);
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined' || typeof sessionStorage === 'undefined') return;
+    const hasEncrypted = !!localStorage.getItem(CLOUD_MASTER_TOKEN_ENCRYPTED_KEY);
+    const hasSessionToken = !!sessionStorage.getItem(CLOUD_MASTER_TOKEN_KEY);
+    if (hasEncrypted && !hasSessionToken) setShowUnlockModal(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined' || typeof sessionStorage === 'undefined') return;
+    if (!localStorage.getItem(CLOUD_WORKER_URL_KEY) && sessionStorage.getItem(CLOUD_WORKER_URL_KEY)) {
+      const u = sessionStorage.getItem(CLOUD_WORKER_URL_KEY);
+      setCloudWorkerUrl(u);
+      localStorage.setItem(CLOUD_WORKER_URL_KEY, u);
+    }
+  }, []);
 
   const getCloudKV = () => {
     const url = (cloudWorkerUrl || '').trim().replace(/\/$/, '');
@@ -1124,12 +1209,133 @@ export default function App() {
   };
   const closeAlertModal = () => setAlertModal((prev) => ({ ...prev, open: false }));
 
-  const handleSettingsSave = () => {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(CLOUD_WORKER_URL_KEY, cloudWorkerUrl);
-      sessionStorage.setItem(CLOUD_MASTER_TOKEN_KEY, cloudMasterToken);
+  const [toasts, setToasts] = useState([]);
+  const addToast = (message, duration = 3000) => {
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `toast-${Date.now()}`;
+    setToasts((prev) => [...prev, { id, message, duration }]);
+  };
+  const removeToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
+
+  const hasAutoLoadedCloudRef = useRef(false);
+  const skipNextDebounceRef = useRef(false);
+  const debounceSaveTimerRef = useRef(null);
+  const papersRef = useRef(papers);
+  papersRef.current = papers;
+
+  const [debouncePending, setDebouncePending] = useState(false);
+  const [debounceKey, setDebounceKey] = useState(0);
+
+  const getPapersFromDB = (database) => {
+    return new Promise((resolve, reject) => {
+      const tx = database.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  };
+
+  const normalizeCloudPaper = (p, base, i) => {
+    if (!p || typeof p.title !== 'string' || !Array.isArray(p.questions)) return null;
+    return {
+      id: typeof p.id === 'string' && p.id ? p.id : generatePaperId(),
+      title: p.title,
+      subtitle: p.subtitle ?? '',
+      createdAt: typeof p.createdAt === 'number' ? p.createdAt : base + i,
+      questions: (p.questions || []).map((q, j) => ({
+        id: base + i * 10000 + j,
+        userAnswer: typeof q?.userAnswer === 'string' ? q.userAnswer : '',
+        correctAnswer: typeof q?.correctAnswer === 'string' ? q.correctAnswer : '',
+        type: q?.type === 'textarea' ? 'textarea' : 'input',
+        starred: q?.starred === true,
+        selectedOption: q?.selectedOption === 'A' || q?.selectedOption === 'B' || q?.selectedOption === 'C' ? q.selectedOption : null,
+        memo: typeof q?.memo === 'string' ? q.memo : ''
+      }))
+    };
+  };
+
+  const mergeCloudIntoLocal = (record) => {
+    if (!db) return Promise.resolve();
+    const list = Array.isArray(record) ? record : (record != null ? [record] : []);
+    const base = Date.now();
+    const normalizedCloud = [];
+    for (let i = 0; i < list.length; i++) {
+      const paper = normalizeCloudPaper(list[i], base, i);
+      if (paper) {
+        if (paper.questions.length === 0) paper.questions = [{ id: base + i * 10000, userAnswer: '', correctAnswer: '', type: 'input', starred: false, selectedOption: null, memo: '' }];
+        normalizedCloud.push(paper);
+      }
     }
-    showAlert('저장 완료', '저장되었습니다.');
+    return getPapersFromDB(db).then((localPapers) => {
+      const localIds = new Set(localPapers.map((p) => p.id));
+      const toUpdate = normalizedCloud.filter((p) => localIds.has(p.id));
+      if (toUpdate.length === 0) {
+        refreshPapers(db);
+        return;
+      }
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        toUpdate.forEach((paper) => store.put(paper));
+        tx.oncomplete = () => {
+          refreshPapers(db);
+          resolve();
+        };
+      });
+    });
+  };
+
+  const handleSettingsSave = () => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(CLOUD_WORKER_URL_KEY, cloudWorkerUrl);
+    }
+    const token = (cloudMasterToken || '').trim();
+    if (token) {
+      setShowSavePasswordModal(true);
+    } else {
+      if (typeof localStorage !== 'undefined') localStorage.removeItem(CLOUD_MASTER_TOKEN_ENCRYPTED_KEY);
+      if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(CLOUD_MASTER_TOKEN_KEY);
+      showAlert('저장 완료', '저장되었습니다.');
+    }
+  };
+
+  const handleSavePasswordConfirm = async (password) => {
+    if (!password.trim()) return;
+    try {
+      const encrypted = await encryptMasterToken((cloudMasterToken || '').trim(), password);
+      if (typeof localStorage !== 'undefined') localStorage.setItem(CLOUD_MASTER_TOKEN_ENCRYPTED_KEY, encrypted);
+      if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(CLOUD_MASTER_TOKEN_KEY, cloudMasterToken);
+      setShowSavePasswordModal(false);
+      showAlert('저장 완료', '저장되었습니다.');
+    } catch (err) {
+      showAlert('저장 실패', '암호화 중 오류가 발생했습니다. ' + (err?.message || ''), 'danger');
+    }
+  };
+
+  const handleUnlockConfirm = async (password) => {
+    if (!password.trim()) return;
+    setUnlockError('');
+    const encrypted = typeof localStorage !== 'undefined' ? localStorage.getItem(CLOUD_MASTER_TOKEN_ENCRYPTED_KEY) : null;
+    if (!encrypted) {
+      setShowUnlockModal(false);
+      return;
+    }
+    try {
+      const decrypted = await decryptMasterToken(encrypted, password);
+      setCloudMasterToken(decrypted);
+      if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(CLOUD_MASTER_TOKEN_KEY, decrypted);
+      setShowUnlockModal(false);
+      const url = (cloudWorkerUrl || '').trim().replace(/\/$/, '');
+      if (url) {
+        const kv = new CloudflareKV({ baseUrl: url, tokenName: CLOUD_MASTER_TOKEN_KEY });
+        kv.readData(EXAM_CLOUD_KV_KEY)
+          .then((record) => mergeCloudIntoLocal(record))
+          .then(() => addToast('클라우드에서 불러왔습니다.'))
+          .catch(() => {});
+      }
+    } catch {
+      setUnlockError('비밀번호가 올바르지 않습니다.');
+    }
   };
 
   const handleSettingsTestConnection = async () => {
@@ -1154,7 +1360,7 @@ export default function App() {
     }
     try {
       await kv.updateData(EXAM_CLOUD_KV_KEY, papers);
-      showAlert('저장 완료', '클라우드에 저장되었습니다.');
+      addToast('클라우드에 저장되었습니다.');
     } catch (err) {
       showAlert('저장 실패', '저장 실패: ' + (err?.message || String(err)), 'danger');
     }
@@ -1169,7 +1375,7 @@ export default function App() {
     try {
       const record = await kv.readData(EXAM_CLOUD_KV_KEY);
       handleLoadFromCloud(record);
-      showAlert('불러오기 완료', '클라우드에서 불러왔습니다.');
+      addToast('클라우드에서 불러왔습니다.');
     } catch (err) {
       showAlert('불러오기 실패', '불러오기 실패: ' + (err?.message || String(err)), 'danger');
     }
@@ -1347,10 +1553,31 @@ export default function App() {
         </main>
       </div>
 
-      {/* Floating Buttons */}
+      {/* Floating: debounce status (좌측 하단) */}
+      {debouncePending && (
+        <div
+          key={debounceKey}
+          className="fixed bottom-8 left-8 z-40 flex flex-col gap-1 min-w-[140px] px-3 py-2 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
+          aria-live="polite"
+          aria-label="클라우드 저장 대기 중"
+        >
+          <span className="text-xs font-medium">저장 대기 중</span>
+          <div className="h-1 w-full bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full origin-left"
+              style={{
+                animation: 'debounce-progress 5s linear forwards'
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Floating: scroll to top (좌측 하단, 저장 대기 시 그 오른쪽으로) */}
       <button 
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        className={`fixed bottom-8 left-8 p-4 bg-indigo-600 dark:bg-indigo-500 text-white rounded-full shadow-2xl transition-all duration-300 transform ${showScrollTop ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}
+        className={`fixed bottom-8 left-8 p-4 bg-indigo-600 dark:bg-indigo-500 text-white rounded-full shadow-2xl transition-all duration-300 transform ${showScrollTop ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'} ${debouncePending ? 'translate-x-[180px]' : ''}`}
+        aria-label="맨 위로"
       >
         <ChevronUp className="w-6 h-6" />
       </button>
@@ -1364,6 +1591,30 @@ export default function App() {
         confirmText="확인"
         type={alertModal.type}
       />
+
+      <PasswordConfirmModal
+        isOpen={showUnlockModal}
+        onClose={() => { setShowUnlockModal(false); setUnlockError(''); }}
+        onConfirm={handleUnlockConfirm}
+        title="로그인"
+        message="클라우드 백업을 사용하기 위해 설정하셨던 비밀번호를 입력하세요."
+        confirmText="확인"
+        cancelText="취소"
+        error={unlockError}
+      />
+
+      <PasswordConfirmModal
+        isOpen={showSavePasswordModal}
+        onClose={() => setShowSavePasswordModal(false)}
+        onConfirm={handleSavePasswordConfirm}
+        title="클라우드 백업 비밀번호 설정"
+        message="클라우드 백업용 MASTER_KEY를 암호화하기 위한 비밀번호를 입력하세요. 이 비밀번호를 잊어버리면 저장된 클라우드에 데이터를 백업하거나 복구할 수 없습니다. 반드시 잊지 않도록 하세요."
+        confirmText="저장"
+        cancelText="취소"
+        type="warning"
+      />
+
+      <Toast toasts={toasts} onDismiss={removeToast} />
     </div>
   );
 }

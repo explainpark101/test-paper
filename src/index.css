@@ -181,3 +181,13 @@ em {
 button {
   cursor: pointer;
 }
+
+/* 디바운스 저장 대기 진행 바 (5초) */
+@keyframes debounce-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

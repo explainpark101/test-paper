@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Cloud, Settings, Home } from 'lucide-react';
+import { Copy, Cloud, Settings, Home, PlusIcon, CheckIcon } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
 const WRANGLER_SECRET_CMD = 'npx wrangler secret put MASTER_TOKEN';
@@ -93,7 +93,7 @@ export default function HowToView({ masterTokenStorageKey, onMasterTokenGenerate
           <div className="flex items-stretch gap-2 mb-2">
             <pre className="flex-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg p-3 border border-gray-200 dark:border-gray-600">{PRE_KV_CREATE}</pre>
             <button type="button" onClick={() => handleCopyPre(PRE_KV_CREATE, 'kv-create')} className="shrink-0 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1" title="복사">
-              <Copy className="w-4 h-4" /> {copiedPreKey === 'kv-create' ? '복사됨' : '복사'}
+              <Copy className="size-4" /> {copiedPreKey === 'kv-create' ? '복사됨' : '복사'}
             </button>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -113,7 +113,7 @@ export default function HowToView({ masterTokenStorageKey, onMasterTokenGenerate
           <div className="flex items-stretch gap-2 mb-2">
             <pre className="flex-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg p-3 border border-gray-200 dark:border-gray-600 overflow-x-auto">{PRE_CLONE}</pre>
             <button type="button" onClick={() => handleCopyPre(PRE_CLONE, 'clone')} className="shrink-0 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1" title="복사">
-              <Copy className="w-4 h-4" /> {copiedPreKey === 'clone' ? '복사됨' : '복사'}
+              <Copy className="size-4" /> {copiedPreKey === 'clone' ? '복사됨' : '복사'}
             </button>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -122,7 +122,7 @@ export default function HowToView({ masterTokenStorageKey, onMasterTokenGenerate
           <div className="flex items-stretch gap-2 mb-2">
             <pre className="flex-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg p-3 border border-gray-200 dark:border-gray-600 overflow-x-auto">{PRE_KV_JSON}</pre>
             <button type="button" onClick={() => handleCopyPre(PRE_KV_JSON, 'json')} className="shrink-0 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1" title="복사">
-              <Copy className="w-4 h-4" /> {copiedPreKey === 'json' ? '복사됨' : '복사'}
+              <Copy className="size-4" /> {copiedPreKey === 'json' ? '복사됨' : '복사'}
             </button>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -138,7 +138,7 @@ export default function HowToView({ masterTokenStorageKey, onMasterTokenGenerate
           <div className="flex items-center gap-2 flex-wrap">
             <code className="text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg px-3 py-2">{WRANGLER_SECRET_CMD}</code>
             <button type="button" onClick={handleCopySecretCmd} className="shrink-0 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1">
-              <Copy className="w-4 h-4" /> {copiedSecretCmd ? '복사됨' : '명령어 복사'}
+              <Copy className="size-4" /> {copiedSecretCmd ? '복사됨' : '명령어 복사'}
             </button>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
@@ -152,16 +152,18 @@ export default function HowToView({ masterTokenStorageKey, onMasterTokenGenerate
             아래 버튼으로 랜덤 MASTER_TOKEN을 생성하세요. <strong>내 MASTER_TOKEN으로 설정</strong>을 누르면 이 기기의 sessionStorage에 저장되며, 위 3단계 시크릿 명령과 앱 설정에 동일한 값을 사용하세요. <strong>다른 기기에서도 동일한 MASTER_TOKEN을 설정해야 인증이 됩니다.</strong>
           </p>
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <button type="button" onClick={generateRandomToken} className="bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all text-sm">
-              MASTER_TOKEN 생성
+            <button type="button" onClick={generateRandomToken} className="flex items-center justify-baseline gap-1 bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all text-sm">
+              <PlusIcon className="size-4" />
+              새로운 MASTER_TOKEN 생성
             </button>
             {generatedToken && (
               <>
                 <code className="flex-1 min-w-0 text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg px-3 py-2 truncate">{generatedToken}</code>
                 <button type="button" onClick={handleCopyToken} className="shrink-0 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1">
-                  <Copy className="w-4 h-4" /> {copiedToken ? '복사됨' : '복사'}
+                  <Copy className="size-4" /> {copiedToken ? '복사됨' : '복사'}
                 </button>
-                <button type="button" onClick={handleSetAsMyToken} className="shrink-0 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all text-sm font-medium">
+                <button type="button" onClick={handleSetAsMyToken} className="flex items-center justify-baseline gap-1 shrink-0 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all text-sm font-medium">
+                  <CheckIcon className="size-4" />
                   내 MASTER_TOKEN으로 설정
                 </button>
               </>
@@ -182,7 +184,7 @@ export default function HowToView({ masterTokenStorageKey, onMasterTokenGenerate
           <div className="flex items-stretch gap-2">
             <pre className="flex-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg p-3 border border-gray-200 dark:border-gray-600">{PRE_DEPLOY}</pre>
             <button type="button" onClick={() => handleCopyPre(PRE_DEPLOY, 'deploy')} className="shrink-0 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1" title="복사">
-              <Copy className="w-4 h-4" /> {copiedPreKey === 'deploy' ? '복사됨' : '복사'}
+              <Copy className="size-4" /> {copiedPreKey === 'deploy' ? '복사됨' : '복사'}
             </button>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
@@ -196,10 +198,10 @@ export default function HowToView({ masterTokenStorageKey, onMasterTokenGenerate
       </div>
       <div className="flex gap-4">
         <button type="button" onClick={() => { setView('settings'); navigate('?view=settings'); }} className="flex items-center gap-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
-          <Settings className="w-4 h-4" /> 설정으로
+          <Settings className="size-4" /> 설정으로
         </button>
         <button type="button" onClick={() => { setView('home'); navigate('/?'); }} className="flex items-center gap-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
-          <Home className="w-4 h-4" /> 홈으로
+          <Home className="size-4" /> 홈으로
         </button>
       </div>
 
