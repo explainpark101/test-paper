@@ -19,7 +19,9 @@ import {
   CloudUpload,
   CloudDownload,
   Eye,
-  EyeOff
+  EyeOff,
+  UploadIcon,
+  DownloadIcon
 } from 'lucide-react';
 import CloudflareKV from './utils/CloudflareKV';
 
@@ -637,7 +639,7 @@ const CLOUD_MASTER_TOKEN_KEY = 'exam_cloud_master_token';
 const CLOUD_MASTER_TOKEN_ENCRYPTED_KEY = 'exam_cloud_master_token_encrypted';
 const EXAM_CLOUD_KV_KEY = 'papers';
 
-function SettingsView({ workerUrl, masterToken, onWorkerUrlChange, onMasterTokenChange, onSave, onTestConnection, setView, navigate }) {
+function SettingsView({ workerUrl, masterToken, onWorkerUrlChange, onMasterTokenChange, onSave, onTestConnection, onExportCloudBackup, onImportCloudBackup, setView, navigate }) {
   const [showMasterToken, setShowMasterToken] = useState(false);
   const [testing, setTesting] = useState(false);
 
@@ -726,6 +728,24 @@ function SettingsView({ workerUrl, masterToken, onWorkerUrlChange, onMasterToken
               {testing ? '연결 중…' : '연결 테스트'}
             </button>
           </div>
+          <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200 dark:border-gray-600 mt-4">
+            <button
+              type="button"
+              onClick={onExportCloudBackup}
+              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 flex items-center gap-1 px-4 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all text-sm"
+            >
+              <UploadIcon className='size-4' />
+              클라우드 저장 정보 내보내기
+            </button>
+            <button
+              type="button"
+              onClick={onImportCloudBackup}
+              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 flex items-center gap-1 px-4 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all text-sm"
+            >
+              <DownloadIcon className='size-4' />
+              클라우드 저장 정보 가져오기
+            </button>
+          </div>
         </div>
       </div>
       <button
@@ -763,6 +783,11 @@ export default function App() {
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [showSavePasswordModal, setShowSavePasswordModal] = useState(false);
   const [unlockError, setUnlockError] = useState('');
+  const [showExportPasswordModal, setShowExportPasswordModal] = useState(false);
+  const [showImportPasswordModal, setShowImportPasswordModal] = useState(false);
+  const [importFileContent, setImportFileContent] = useState(null);
+  const [importError, setImportError] = useState('');
+  const cloudBackupFileInputRef = useRef(null);
 
   const refreshPapers = (database) => {
     const transaction = database.transaction(STORE_NAME, 'readonly');
@@ -1338,6 +1363,73 @@ export default function App() {
     }
   };
 
+  const handleExportPasswordConfirm = async (password) => {
+    if (!password.trim()) return;
+    try {
+      const payload = JSON.stringify({
+        workerUrl: (cloudWorkerUrl || '').trim(),
+        masterToken: (cloudMasterToken || '').trim()
+      });
+      const encrypted = await encryptMasterToken(payload, password);
+      const blob = new Blob([encrypted], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `exam-cloud-backup-${new Date().toISOString().slice(0, 10)}.enc`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowExportPasswordModal(false);
+      showAlert('내보내기 완료', '클라우드 저장 정보가 암호화된 파일로 저장되었습니다.');
+    } catch (err) {
+      showAlert('내보내기 실패', '암호화 중 오류가 발생했습니다. ' + (err?.message || ''), 'danger');
+    }
+  };
+
+  const handleImportPasswordConfirm = async (password) => {
+    if (!password.trim() || !importFileContent) return;
+    setImportError('');
+    try {
+      const decrypted = await decryptMasterToken(importFileContent, password);
+      const data = JSON.parse(decrypted);
+      const workerUrl = typeof data.workerUrl === 'string' ? data.workerUrl.trim() : '';
+      const masterToken = typeof data.masterToken === 'string' ? data.masterToken.trim() : '';
+      setCloudWorkerUrl(workerUrl);
+      if (typeof localStorage !== 'undefined') localStorage.setItem(CLOUD_WORKER_URL_KEY, workerUrl);
+      setCloudMasterToken(masterToken);
+      if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(CLOUD_MASTER_TOKEN_KEY, masterToken);
+      setImportFileContent(null);
+      setShowImportPasswordModal(false);
+      if (masterToken) {
+        setShowSavePasswordModal(true);
+      } else {
+        showAlert('가져오기 완료', '클라우드 저장 정보를 불러왔습니다.');
+      }
+    } catch {
+      setImportError('비밀번호가 올바르지 않거나 파일 형식이 맞지 않습니다.');
+    }
+  };
+
+  const handleExportCloudBackup = () => setShowExportPasswordModal(true);
+
+  const handleImportCloudBackupClick = () => {
+    setImportError('');
+    setImportFileContent(null);
+    cloudBackupFileInputRef.current?.click();
+  };
+
+  const handleImportCloudBackupFileChange = (e) => {
+    const file = e.target?.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result : '';
+      setImportFileContent(text);
+      setShowImportPasswordModal(true);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const handleSettingsTestConnection = async () => {
     const kv = getCloudKV();
     if (!kv) {
@@ -1371,6 +1463,12 @@ export default function App() {
     if (!kv) {
       showAlert('설정 필요', '설정에서 Worker URL과 MASTER_TOKEN을 입력해 주세요.', 'warning');
       return;
+    }
+    skipNextDebounceRef.current = true;
+    if (debounceSaveTimerRef.current) {
+      clearTimeout(debounceSaveTimerRef.current);
+      debounceSaveTimerRef.current = null;
+      setDebouncePending(false);
     }
     try {
       const record = await kv.readData(EXAM_CLOUD_KV_KEY);
@@ -1453,6 +1551,8 @@ export default function App() {
         onMasterTokenChange={setCloudMasterToken}
         onSave={handleSettingsSave}
         onTestConnection={handleSettingsTestConnection}
+        onExportCloudBackup={handleExportCloudBackup}
+        onImportCloudBackup={handleImportCloudBackupClick}
         setView={setView}
         navigate={navigate}
       />
@@ -1612,6 +1712,36 @@ export default function App() {
         confirmText="저장"
         cancelText="취소"
         type="warning"
+      />
+
+      <PasswordConfirmModal
+        isOpen={showExportPasswordModal}
+        onClose={() => setShowExportPasswordModal(false)}
+        onConfirm={handleExportPasswordConfirm}
+        title="클라우드 저장 정보 내보내기"
+        message="내보낸 파일을 암호화할 비밀번호를 입력하세요. 가져올 때 이 비밀번호가 필요합니다."
+        confirmText="내보내기"
+        cancelText="취소"
+      />
+
+      <PasswordConfirmModal
+        isOpen={showImportPasswordModal}
+        onClose={() => { setShowImportPasswordModal(false); setImportFileContent(null); setImportError(''); }}
+        onConfirm={handleImportPasswordConfirm}
+        title="클라우드 저장 정보 가져오기"
+        message="클라우드 백업을 사용하기 위해 설정하셨던 비밀번호를 입력하세요."
+        confirmText="확인"
+        cancelText="취소"
+        error={importError}
+      />
+
+      <input
+        ref={cloudBackupFileInputRef}
+        type="file"
+        accept=".enc,application/octet-stream,text/plain"
+        onChange={handleImportCloudBackupFileChange}
+        className="hidden"
+        aria-hidden="true"
       />
 
       <Toast toasts={toasts} onDismiss={removeToast} />
