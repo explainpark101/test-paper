@@ -28,7 +28,9 @@ import RadioToggle from './components/RadioToggle';
 import ExamQuestionItem from './components/ExamQuestionItem';
 import ScoreQuestionItem from './components/ScoreQuestionItem';
 import ScoreFilterCheckboxes from './components/ScoreFilterCheckboxes';
+import SelectDropdown from './components/SelectDropdown';
 import ConfirmModal from './components/ConfirmModal';
+import PromptModal from './components/PromptModal';
 import HowToView from './components/HowToView';
 import SettingsView from './components/SettingsView';
 import Toast from './components/Toast';
@@ -141,17 +143,14 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
               <FileText className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> 내 문제지 목록
             </h2>
             {cloudEnabled && folders?.keys?.length > 0 && (
-              <select
+              <SelectDropdown
                 value={currentFolderKey}
-                onChange={(e) => onSwitchFolder(e.target.value)}
+                options={folders.keys.map((k) => ({ value: k, label: folders.aliases?.[k] ?? k }))}
+                onChange={onSwitchFolder}
                 disabled={cloudLoadLoading}
-                className="text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none disabled:opacity-50"
-                aria-label="문제지 목록 선택"
-              >
-                {folders.keys.map((k) => (
-                  <option key={k} value={k}>{folders.aliases?.[k] ?? k}</option>
-                ))}
-              </select>
+                placeholder="목록 선택"
+                ariaLabel="문제지 목록 선택"
+              />
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -701,6 +700,7 @@ export default function App() {
   const [deleteModalPaperId, setDeleteModalPaperId] = useState(null);
   const [deleteFolderModalOpen, setDeleteFolderModalOpen] = useState(false);
   const [deleteFolderKey, setDeleteFolderKey] = useState(null);
+  const [addFolderModalOpen, setAddFolderModalOpen] = useState(false);
   const [cloudWorkerUrl, setCloudWorkerUrl] = useState(() => typeof localStorage !== 'undefined' ? (localStorage.getItem(CLOUD_WORKER_URL_KEY) || '') : '');
   const [cloudMasterToken, setCloudMasterToken] = useState(() => {
     if (typeof sessionStorage === 'undefined') return '';
@@ -1556,14 +1556,17 @@ export default function App() {
     }
   };
 
-  const handleAddFolder = async () => {
-    const kv = getCloudKV();
-    if (!kv) {
+  const handleOpenAddFolderModal = () => {
+    if (!getCloudKV()) {
       showAlert('설정 필요', '클라우드 저장을 먼저 설정해 주세요.', 'warning');
       return;
     }
-    const alias = window.prompt('새 문제지 목록의 별칭을 입력하세요', '');
-    if (alias == null) return;
+    setAddFolderModalOpen(true);
+  };
+
+  const handleAddFolder = async (alias) => {
+    const kv = getCloudKV();
+    if (!kv) return;
     const key = `list-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
     const newKeys = [...(folders.keys || []), key];
     const newAliases = { ...(folders.aliases || {}), [key]: (alias || '').trim() || key };
@@ -1690,7 +1693,7 @@ export default function App() {
         folders={folders}
         currentFolderKey={currentFolderKey}
         cloudEnabled={!!getCloudKV()}
-        onAddFolder={handleAddFolder}
+        onOpenAddFolderModal={handleOpenAddFolderModal}
         onOpenDeleteFolderModal={handleOpenDeleteFolderModal}
         onRenameFolder={handleRenameFolder}
       />
@@ -1839,6 +1842,18 @@ export default function App() {
         confirmText="삭제"
         cancelText="취소"
         type="danger"
+      />
+
+      <PromptModal
+        isOpen={addFolderModalOpen}
+        onClose={() => setAddFolderModalOpen(false)}
+        onConfirm={(value) => handleAddFolder(value)}
+        title="새 문제지 목록"
+        message="목록에 표시할 이름을 입력하세요."
+        placeholder="목록 이름"
+        confirmText="추가"
+        cancelText="취소"
+        defaultValue=""
       />
 
       <PasswordConfirmModal

@@ -17,7 +17,7 @@ function SettingsView({
   folders,
   currentFolderKey,
   cloudEnabled,
-  onAddFolder,
+  onOpenAddFolderModal,
   onOpenDeleteFolderModal,
   onRenameFolder
 }) {
@@ -253,7 +253,7 @@ function SettingsView({
           </div>
           <button
             type="button"
-            onClick={onAddFolder}
+            onClick={onOpenAddFolderModal}
             className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl border border-indigo-300 dark:border-indigo-600 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all text-sm font-medium"
           >
             <Plus className="w-4 h-4" /> 새 문제지 목록
