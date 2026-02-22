@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
-function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText = '확인', cancelText = '취소', type = 'default' }) {
+function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText = '확인', cancelText = '취소', type = 'default', variant = 'confirm' }) {
+  const isAlert = variant === 'alert';
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
 
@@ -44,7 +45,7 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText 
   };
 
   const handleConfirm = () => {
-    onConfirm();
+    if (!isAlert && onConfirm) onConfirm();
     onClose();
   };
 
@@ -94,18 +95,20 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText 
           </p>
 
           {/* Buttons */}
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all font-medium"
-            >
-              {cancelText}
-            </button>
+          <div className={`flex gap-3 pt-2 ${isAlert ? 'justify-end' : ''}`}>
+            {!isAlert && (
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all font-medium"
+              >
+                {cancelText}
+              </button>
+            )}
             <button
               onClick={handleConfirm}
-              className={`flex-1 px-4 py-2.5 rounded-xl text-white transition-all font-medium shadow-lg ${
+              className={`px-4 py-2.5 rounded-xl text-white transition-all font-medium shadow-lg ${
                 typeColors[type] || typeColors.default
-              }`}
+              } ${isAlert ? '' : 'flex-1'}`}
             >
               {confirmText}
             </button>

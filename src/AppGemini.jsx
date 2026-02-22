@@ -14,8 +14,14 @@ import {
   RotateCcw,
   Printer,
   Star,
-  ChevronDown
+  ChevronDown,
+  Settings,
+  CloudUpload,
+  CloudDownload,
+  Eye,
+  EyeOff
 } from 'lucide-react';
+import CloudflareKV from './utils/CloudflareKV';
 
 import RangeSizeSelect from './components/RangeSizeSelect';
 import PrintScoreView from './components/PrintScoreView';
@@ -24,6 +30,7 @@ import ExamQuestionItem from './components/ExamQuestionItem';
 import ScoreQuestionItem from './components/ScoreQuestionItem';
 import ScoreFilterCheckboxes from './components/ScoreFilterCheckboxes';
 import ConfirmModal from './components/ConfirmModal';
+import HowToView from './components/HowToView';
 
 // Base path from environment variable
 const BASE_PATH = import.meta.env.VITE_BASE_PATH || '/';
@@ -56,7 +63,7 @@ const initDB = () => {
 };
 
 // --- View components (declared outside App to avoid re-creation on every render) ---
-function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, importInputRef, copyModalOpen, copyModalPaperId, onOpenCopyModal, onCloseCopyModal, onConfirmCopy, deleteModalOpen, deleteModalPaperId, onOpenDeleteModal, onCloseDeleteModal, onConfirmDelete }) {
+function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, onCloudSave, onCloudLoad, importInputRef, copyModalOpen, copyModalPaperId, onOpenCopyModal, onCloseCopyModal, onConfirmCopy, deleteModalOpen, deleteModalPaperId, onOpenDeleteModal, onCloseDeleteModal, onConfirmDelete }) {
   // 각 문제지의 채점 결과를 계산하는 함수
   const calculateScoreStats = (paper) => {
     if (!paper || !paper.questions) {
@@ -142,6 +149,12 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
             </button>
             <button onClick={onExportJSON} className="text-xs flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">
               <Download className="w-3 h-3" /> JSON 추출
+            </button>
+            <button type="button" onClick={onCloudSave} className="text-xs flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">
+              <CloudUpload className="w-3 h-3" /> 클라우드 저장
+            </button>
+            <button type="button" onClick={onCloudLoad} className="text-xs flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">
+              <CloudDownload className="w-3 h-3" /> 클라우드 불러오기
             </button>
           </div>
         </div>
@@ -616,6 +629,112 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
   );
 }
 
+const CLOUD_WORKER_URL_KEY = 'exam_cloud_worker_url';
+const CLOUD_MASTER_TOKEN_KEY = 'exam_cloud_master_token';
+const EXAM_CLOUD_KV_KEY = 'papers';
+
+function SettingsView({ workerUrl, masterToken, onWorkerUrlChange, onMasterTokenChange, onSave, onTestConnection, setView, navigate }) {
+  const [showMasterToken, setShowMasterToken] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const normalizeWorkerUrl = (value) => {
+    const v = (value || '').trim();
+    if (!v) return v;
+    if (v.startsWith('https://')) return v;
+    if (v.startsWith('http://')) return 'https://' + v.slice(7);
+    return 'https://' + v;
+  };
+
+  const handleWorkerUrlBlur = () => {
+    if (!workerUrl.trim().startsWith('https://')) {
+      onWorkerUrlChange(normalizeWorkerUrl(workerUrl));
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!onTestConnection) return;
+    setTesting(true);
+    try {
+      await onTestConnection();
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 dark:text-gray-100">
+          <Settings className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> 클라우드 저장 설정
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Worker URL과 MASTER_TOKEN을 설정하면 홈에서 클라우드 저장/불러오기를 사용할 수 있습니다. 설정 방법은 <button type="button" onClick={() => navigate('?view=howto')} className="text-indigo-600 dark:text-indigo-400 underline hover:no-underline font-medium">Worker 배포 방법 보기</button>를 참고하세요.
+        </p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Worker URL</label>
+            <input
+              type="url"
+              value={workerUrl}
+              onChange={(e) => onWorkerUrlChange(e.target.value)}
+              onBlur={handleWorkerUrlBlur}
+              placeholder="https://your-worker.workers.dev"
+              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-transparent dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">MASTER_TOKEN</label>
+            <div className="relative flex">
+              <input
+                type={showMasterToken ? 'text' : 'password'}
+                value={masterToken}
+                onChange={(e) => onMasterTokenChange(e.target.value)}
+                placeholder="Worker Secrets에 설정한 값"
+                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 pr-10 bg-transparent dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none"
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded"
+                onMouseDown={() => setShowMasterToken(true)}
+                onMouseUp={() => setShowMasterToken(false)}
+                onMouseLeave={() => setShowMasterToken(false)}
+                aria-label={showMasterToken ? '토큰 숨기기' : '토큰 보기'}
+              >
+                {showMasterToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onSave}
+              className="bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all text-sm"
+            >
+              저장
+            </button>
+            <button
+              type="button"
+              onClick={handleTestConnection}
+              disabled={testing}
+              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all text-sm disabled:opacity-50"
+            >
+              {testing ? '연결 중…' : '연결 테스트'}
+            </button>
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => { setView('home'); navigate('/?'); }}
+        className="flex items-center gap-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+      >
+        <Home className="w-4 h-4" /> 홈으로
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -625,13 +744,15 @@ export default function App() {
   const [db, setDb] = useState(null);
   const [papers, setPapers] = useState([]);
   const [activePaperId, setActivePaperId] = useState(null);
-  const [view, setView] = useState('home'); // 'home', 'exam', 'score'
+  const [view, setView] = useState('home'); // 'home', 'exam', 'score', 'settings'
   const [newTitle, setNewTitle] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [copyModalOpen, setCopyModalOpen] = useState(false);
   const [copyModalPaperId, setCopyModalPaperId] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteModalPaperId, setDeleteModalPaperId] = useState(null);
+  const [cloudWorkerUrl, setCloudWorkerUrl] = useState(() => typeof sessionStorage !== 'undefined' ? (sessionStorage.getItem(CLOUD_WORKER_URL_KEY) || '') : '');
+  const [cloudMasterToken, setCloudMasterToken] = useState(() => typeof sessionStorage !== 'undefined' ? (sessionStorage.getItem(CLOUD_MASTER_TOKEN_KEY) || '') : '');
 
   const refreshPapers = (database) => {
     const transaction = database.transaction(STORE_NAME, 'readonly');
@@ -669,8 +790,18 @@ export default function App() {
 
   // URL에서 문제지 ID와 view 읽어서 자동 로드 (URL 변경 시에만)
   useEffect(() => {
+    if (urlView === 'settings') {
+      setView('settings');
+      setActivePaperId(null);
+      return;
+    }
+    if (urlView === 'howto') {
+      setView('howto');
+      setActivePaperId(null);
+      return;
+    }
     if (!papers.length) return;
-    
+
     if (urlPaperId) {
       const paper = papers.find(p => p.id === urlPaperId);
       if (paper) {
@@ -971,6 +1102,115 @@ export default function App() {
     }, 10);
   };
 
+  useEffect(() => {
+    if (typeof sessionStorage === 'undefined') return;
+    sessionStorage.setItem(CLOUD_WORKER_URL_KEY, cloudWorkerUrl);
+  }, [cloudWorkerUrl]);
+  useEffect(() => {
+    if (typeof sessionStorage === 'undefined') return;
+    sessionStorage.setItem(CLOUD_MASTER_TOKEN_KEY, cloudMasterToken);
+  }, [cloudMasterToken]);
+
+  const getCloudKV = () => {
+    const url = (cloudWorkerUrl || '').trim().replace(/\/$/, '');
+    const token = (cloudMasterToken || '').trim();
+    if (!url || !token) return null;
+    return new CloudflareKV({ baseUrl: url, tokenName: CLOUD_MASTER_TOKEN_KEY });
+  };
+
+  const [alertModal, setAlertModal] = useState({ open: false, title: '', message: '', type: 'default' });
+  const showAlert = (title, message, type = 'default') => {
+    setAlertModal({ open: true, title, message, type });
+  };
+  const closeAlertModal = () => setAlertModal((prev) => ({ ...prev, open: false }));
+
+  const handleSettingsSave = () => {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(CLOUD_WORKER_URL_KEY, cloudWorkerUrl);
+      sessionStorage.setItem(CLOUD_MASTER_TOKEN_KEY, cloudMasterToken);
+    }
+    showAlert('저장 완료', '저장되었습니다.');
+  };
+
+  const handleSettingsTestConnection = async () => {
+    const kv = getCloudKV();
+    if (!kv) {
+      showAlert('설정 필요', 'Worker URL과 MASTER_TOKEN을 입력해 주세요.', 'warning');
+      return;
+    }
+    try {
+      await kv.readData(EXAM_CLOUD_KV_KEY);
+      showAlert('연결 성공', '연결되었습니다.');
+    } catch (err) {
+      showAlert('연결 실패', '연결 실패: ' + (err?.message || String(err)), 'danger');
+    }
+  };
+
+  const handleCloudSave = async () => {
+    const kv = getCloudKV();
+    if (!kv) {
+      showAlert('설정 필요', '설정에서 Worker URL과 MASTER_TOKEN을 입력해 주세요.', 'warning');
+      return;
+    }
+    try {
+      await kv.updateData(EXAM_CLOUD_KV_KEY, papers);
+      showAlert('저장 완료', '클라우드에 저장되었습니다.');
+    } catch (err) {
+      showAlert('저장 실패', '저장 실패: ' + (err?.message || String(err)), 'danger');
+    }
+  };
+
+  const handleCloudLoad = async () => {
+    const kv = getCloudKV();
+    if (!kv) {
+      showAlert('설정 필요', '설정에서 Worker URL과 MASTER_TOKEN을 입력해 주세요.', 'warning');
+      return;
+    }
+    try {
+      const record = await kv.readData(EXAM_CLOUD_KV_KEY);
+      handleLoadFromCloud(record);
+      showAlert('불러오기 완료', '클라우드에서 불러왔습니다.');
+    } catch (err) {
+      showAlert('불러오기 실패', '불러오기 실패: ' + (err?.message || String(err)), 'danger');
+    }
+  };
+
+  const handleLoadFromCloud = (record) => {
+    if (!db) return;
+    try {
+      const list = Array.isArray(record) ? record : (record != null ? [record] : []);
+      const base = Date.now();
+      const toAdd = [];
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        if (!p || typeof p.title !== 'string' || !Array.isArray(p.questions)) continue;
+        const paper = {
+          id: typeof p.id === 'string' && p.id ? p.id : generatePaperId(),
+          title: p.title,
+          subtitle: p.subtitle ?? '',
+          createdAt: typeof p.createdAt === 'number' ? p.createdAt : base + i,
+          questions: (p.questions || []).map((q, j) => ({
+            id: base + i * 10000 + j,
+            userAnswer: typeof q?.userAnswer === 'string' ? q.userAnswer : '',
+            correctAnswer: typeof q?.correctAnswer === 'string' ? q.correctAnswer : '',
+            type: q?.type === 'textarea' ? 'textarea' : 'input',
+            starred: q?.starred === true,
+            selectedOption: q?.selectedOption === 'A' || q?.selectedOption === 'B' || q?.selectedOption === 'C' ? q.selectedOption : null,
+            memo: typeof q?.memo === 'string' ? q.memo : ''
+          }))
+        };
+        if (paper.questions.length === 0) paper.questions = [{ id: base + i * 10000, userAnswer: '', correctAnswer: '', type: 'input', starred: false, selectedOption: null, memo: '' }];
+        toAdd.push(paper);
+      }
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      toAdd.forEach((paper) => store.add(paper));
+      transaction.oncomplete = () => refreshPapers(db);
+    } catch (err) {
+      showAlert('데이터 오류', '불러온 데이터 형식이 올바르지 않습니다.', 'danger');
+    }
+  };
+
   const currentView =
     view === 'home' ? (
       <HomeView
@@ -985,6 +1225,8 @@ export default function App() {
         onDeletePaper={deletePaperFromDB}
         onExportJSON={handleExportJSON}
         onImportJSON={handleImportJSON}
+        onCloudSave={handleCloudSave}
+        onCloudLoad={handleCloudLoad}
         importInputRef={importInputRef}
         copyModalOpen={copyModalOpen}
         copyModalPaperId={copyModalPaperId}
@@ -996,6 +1238,27 @@ export default function App() {
         onOpenDeleteModal={handleOpenDeleteModal}
         onCloseDeleteModal={handleCloseDeleteModal}
         onConfirmDelete={handleConfirmDelete}
+      />
+    ) : view === 'settings' ? (
+      <SettingsView
+        workerUrl={cloudWorkerUrl}
+        masterToken={cloudMasterToken}
+        onWorkerUrlChange={setCloudWorkerUrl}
+        onMasterTokenChange={setCloudMasterToken}
+        onSave={handleSettingsSave}
+        onTestConnection={handleSettingsTestConnection}
+        setView={setView}
+        navigate={navigate}
+      />
+    ) : view === 'howto' ? (
+      <HowToView
+        masterTokenStorageKey={CLOUD_MASTER_TOKEN_KEY}
+        onMasterTokenGenerated={(token) => {
+          setCloudMasterToken(token);
+          if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(CLOUD_MASTER_TOKEN_KEY, token);
+        }}
+        setView={setView}
+        navigate={navigate}
       />
     ) : view === 'exam' ? (
       <ExamView
@@ -1040,10 +1303,38 @@ export default function App() {
             </div>
             <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">ExamMaster</h1>
           </button>
+
+          {view === 'home' && (
+            <button
+              type="button"
+              onClick={() => { setView('settings'); navigate('?view=settings'); }}
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title="설정 (클라우드)"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          )}
+
+          {view === 'howto' && (
+            <button
+              onClick={() => { setView('home'); navigate('/?'); }}
+              className="flex items-center gap-2 text-sm font-bold text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            >
+              <Home className="w-4 h-4" /> 홈으로
+            </button>
+          )}
           
-          {view !== 'home' && (
+          {(view === 'exam' || view === 'score') && (
             <button 
               onClick={() => { setView('home'); setActivePaperId(null); navigate('/?'); }}
+              className="flex items-center gap-2 text-sm font-bold text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            >
+              <Home className="w-4 h-4" /> 홈으로
+            </button>
+          )}
+          {view === 'settings' && (
+            <button 
+              onClick={() => { setView('home'); navigate('/?'); }}
               className="flex items-center gap-2 text-sm font-bold text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
               <Home className="w-4 h-4" /> 홈으로
@@ -1063,6 +1354,16 @@ export default function App() {
       >
         <ChevronUp className="w-6 h-6" />
       </button>
+
+      <ConfirmModal
+        variant="alert"
+        isOpen={alertModal.open}
+        onClose={closeAlertModal}
+        title={alertModal.title}
+        message={alertModal.message}
+        confirmText="확인"
+        type={alertModal.type}
+      />
     </div>
   );
 }
