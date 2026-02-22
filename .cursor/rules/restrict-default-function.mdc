@@ -1,3 +1,10 @@
+---
+description: "Restriction to use window.prompt, window.confirm, window.alert"
+alwaysApply: true
+---
+각 환경에 따라서 `prompt`, `confirm`, `alert`는 필요성에 맞추어서 직접 modal로 구현하거나, 컴포넌트를 수정하여 사용하도록 해.
+기본적으로 Modal을 생성할 때는 아래의 예시처럼, 애니메이션이 들어가는 일관적인 디자인을 쓰도록 해.
+```
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
@@ -136,3 +143,4 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText 
 }
 
 export default ConfirmModal;
+```

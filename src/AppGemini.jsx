@@ -18,10 +18,7 @@ import {
   Settings,
   CloudUpload,
   CloudDownload,
-  Eye,
-  EyeOff,
-  UploadIcon,
-  DownloadIcon
+  Loader2
 } from 'lucide-react';
 import CloudflareKV from './utils/CloudflareKV';
 
@@ -33,6 +30,7 @@ import ScoreQuestionItem from './components/ScoreQuestionItem';
 import ScoreFilterCheckboxes from './components/ScoreFilterCheckboxes';
 import ConfirmModal from './components/ConfirmModal';
 import HowToView from './components/HowToView';
+import SettingsView from './components/SettingsView';
 import Toast from './components/Toast';
 import PasswordConfirmModal from './components/PasswordConfirmModal';
 import { encryptMasterToken, decryptMasterToken } from './utils/masterTokenCrypto';
@@ -68,7 +66,7 @@ const initDB = () => {
 };
 
 // --- View components (declared outside App to avoid re-creation on every render) ---
-function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, onCloudSave, onCloudLoad, importInputRef, copyModalOpen, copyModalPaperId, onOpenCopyModal, onCloseCopyModal, onConfirmCopy, deleteModalOpen, deleteModalPaperId, onOpenDeleteModal, onCloseDeleteModal, onConfirmDelete }) {
+function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, onCloudSave, onCloudLoad, cloudSaveLoading, cloudSaveSuccess, cloudLoadLoading, cloudLoadSuccess, importInputRef, copyModalOpen, copyModalPaperId, onOpenCopyModal, onCloseCopyModal, onConfirmCopy, deleteModalOpen, deleteModalPaperId, onOpenDeleteModal, onCloseDeleteModal, onConfirmDelete, folders, currentFolderKey, onSwitchFolder, cloudEnabled }) {
   // 각 문제지의 채점 결과를 계산하는 함수
   const calculateScoreStats = (paper) => {
     if (!paper || !paper.questions) {
@@ -137,10 +135,25 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold flex items-center gap-2 dark:text-gray-100">
-            <FileText className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> 내 문제지 목록
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-semibold flex items-center gap-2 dark:text-gray-100">
+              <FileText className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> 내 문제지 목록
+            </h2>
+            {cloudEnabled && folders?.keys?.length > 0 && (
+              <select
+                value={currentFolderKey}
+                onChange={(e) => onSwitchFolder(e.target.value)}
+                disabled={cloudLoadLoading}
+                className="text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none disabled:opacity-50"
+                aria-label="문제지 목록 선택"
+              >
+                {folders.keys.map((k) => (
+                  <option key={k} value={k}>{folders.aliases?.[k] ?? k}</option>
+                ))}
+              </select>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <input
               ref={importInputRef}
@@ -155,11 +168,39 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
             <button onClick={onExportJSON} className="text-xs flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">
               <Download className="w-3 h-3" /> JSON 추출
             </button>
-            <button type="button" onClick={onCloudSave} className="text-xs flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">
-              <CloudUpload className="w-3 h-3" /> 클라우드 저장
+            <button
+              type="button"
+              onClick={onCloudSave}
+              disabled={cloudSaveLoading || cloudSaveSuccess}
+              aria-busy={cloudSaveLoading}
+              aria-label={cloudSaveLoading ? '저장 중' : cloudSaveSuccess ? '저장됨' : '클라우드 저장'}
+              className={`text-xs flex items-center gap-1 shrink-0 ${cloudSaveLoading || cloudSaveSuccess ? 'opacity-70 cursor-not-allowed' : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300'}`}
+            >
+              {cloudSaveLoading ? (
+                <Loader2 className="w-3 h-3 animate-spin" aria-hidden />
+              ) : cloudSaveSuccess ? (
+                <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              ) : (
+                <CloudUpload className="w-3 h-3" aria-hidden />
+              )}
+              {cloudSaveLoading ? '저장 중…' : cloudSaveSuccess ? '저장됨' : '클라우드 저장'}
             </button>
-            <button type="button" onClick={onCloudLoad} className="text-xs flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">
-              <CloudDownload className="w-3 h-3" /> 클라우드 불러오기
+            <button
+              type="button"
+              onClick={onCloudLoad}
+              disabled={cloudLoadLoading || cloudLoadSuccess}
+              aria-busy={cloudLoadLoading}
+              aria-label={cloudLoadLoading ? '불러오기 중' : cloudLoadSuccess ? '불러옴' : '클라우드 불러오기'}
+              className={`text-xs flex items-center gap-1 shrink-0 ${cloudLoadLoading || cloudLoadSuccess ? 'opacity-70 cursor-not-allowed' : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300'}`}
+            >
+              {cloudLoadLoading ? (
+                <Loader2 className="w-3 h-3 animate-spin" aria-hidden />
+              ) : cloudLoadSuccess ? (
+                <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              ) : (
+                <CloudDownload className="w-3 h-3" aria-hidden />
+              )}
+              {cloudLoadLoading ? '불러오기 중…' : cloudLoadSuccess ? '불러옴' : '클라우드 불러오기'}
             </button>
           </div>
         </div>
@@ -637,127 +678,10 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
 const CLOUD_WORKER_URL_KEY = 'exam_cloud_worker_url';
 const CLOUD_MASTER_TOKEN_KEY = 'exam_cloud_master_token';
 const CLOUD_MASTER_TOKEN_ENCRYPTED_KEY = 'exam_cloud_master_token_encrypted';
-const EXAM_CLOUD_KV_KEY = 'papers';
-
-function SettingsView({ workerUrl, masterToken, onWorkerUrlChange, onMasterTokenChange, onSave, onTestConnection, onExportCloudBackup, onImportCloudBackup, setView, navigate }) {
-  const [showMasterToken, setShowMasterToken] = useState(false);
-  const [testing, setTesting] = useState(false);
-
-  const normalizeWorkerUrl = (value) => {
-    const v = (value || '').trim();
-    if (!v) return v;
-    if (v.startsWith('https://')) return v;
-    if (v.startsWith('http://')) return 'https://' + v.slice(7);
-    return 'https://' + v;
-  };
-
-  const handleWorkerUrlBlur = () => {
-    if (!workerUrl.trim().startsWith('https://')) {
-      onWorkerUrlChange(normalizeWorkerUrl(workerUrl));
-    }
-  };
-
-  const handleTestConnection = async () => {
-    if (!onTestConnection) return;
-    setTesting(true);
-    try {
-      await onTestConnection();
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 dark:text-gray-100">
-          <Settings className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> 클라우드 저장 설정
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Worker URL과 MASTER_TOKEN을 설정하면 홈에서 클라우드 저장/불러오기를 사용할 수 있습니다. 설정 방법은 <button type="button" onClick={() => navigate('?view=howto')} className="text-indigo-600 dark:text-indigo-400 underline hover:no-underline font-medium">Worker 배포 방법 보기</button>를 참고하세요.
-        </p>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Worker URL</label>
-            <input
-              type="url"
-              value={workerUrl}
-              onChange={(e) => onWorkerUrlChange(e.target.value)}
-              onBlur={handleWorkerUrlBlur}
-              placeholder="https://your-worker.workers.dev"
-              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-transparent dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">MASTER_TOKEN</label>
-            <div className="relative flex">
-              <input
-                type={showMasterToken ? 'text' : 'password'}
-                value={masterToken}
-                onChange={(e) => onMasterTokenChange(e.target.value)}
-                placeholder="Worker Secrets에 설정한 값"
-                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 pr-10 bg-transparent dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none"
-              />
-              <button
-                type="button"
-                tabIndex={-1}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded"
-                onMouseDown={() => setShowMasterToken(true)}
-                onMouseUp={() => setShowMasterToken(false)}
-                onMouseLeave={() => setShowMasterToken(false)}
-                aria-label={showMasterToken ? '토큰 숨기기' : '토큰 보기'}
-              >
-                {showMasterToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onSave}
-              className="bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all text-sm"
-            >
-              저장
-            </button>
-            <button
-              type="button"
-              onClick={handleTestConnection}
-              disabled={testing}
-              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all text-sm disabled:opacity-50"
-            >
-              {testing ? '연결 중…' : '연결 테스트'}
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200 dark:border-gray-600 mt-4">
-            <button
-              type="button"
-              onClick={onExportCloudBackup}
-              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 flex items-center gap-1 px-4 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all text-sm"
-            >
-              <UploadIcon className='size-4' />
-              클라우드 저장 정보 내보내기
-            </button>
-            <button
-              type="button"
-              onClick={onImportCloudBackup}
-              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 flex items-center gap-1 px-4 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all text-sm"
-            >
-              <DownloadIcon className='size-4' />
-              클라우드 저장 정보 가져오기
-            </button>
-          </div>
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={() => { setView('home'); navigate('/?'); }}
-        className="flex items-center gap-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-      >
-        <Home className="w-4 h-4" /> 홈으로
-      </button>
-    </div>
-  );
-}
+const FOLDERS_KV_KEY = 'folders';
+const CURRENT_FOLDER_KEY = 'exam_current_folder_key';
+const DEFAULT_PAPER_LIST_KEY = 'papers';
+const DEFAULT_PAPER_LIST_ALIAS = '기본 문제지';
 
 export default function App() {
   const [searchParams] = useSearchParams();
@@ -775,6 +699,8 @@ export default function App() {
   const [copyModalPaperId, setCopyModalPaperId] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteModalPaperId, setDeleteModalPaperId] = useState(null);
+  const [deleteFolderModalOpen, setDeleteFolderModalOpen] = useState(false);
+  const [deleteFolderKey, setDeleteFolderKey] = useState(null);
   const [cloudWorkerUrl, setCloudWorkerUrl] = useState(() => typeof localStorage !== 'undefined' ? (localStorage.getItem(CLOUD_WORKER_URL_KEY) || '') : '');
   const [cloudMasterToken, setCloudMasterToken] = useState(() => {
     if (typeof sessionStorage === 'undefined') return '';
@@ -788,6 +714,22 @@ export default function App() {
   const [importFileContent, setImportFileContent] = useState(null);
   const [importError, setImportError] = useState('');
   const cloudBackupFileInputRef = useRef(null);
+  const [cloudSaveLoading, setCloudSaveLoading] = useState(false);
+  const [cloudSaveSuccess, setCloudSaveSuccess] = useState(false);
+  const [cloudLoadLoading, setCloudLoadLoading] = useState(false);
+  const [cloudLoadSuccess, setCloudLoadSuccess] = useState(false);
+  const [folders, setFolders] = useState({ keys: [DEFAULT_PAPER_LIST_KEY], aliases: { [DEFAULT_PAPER_LIST_KEY]: DEFAULT_PAPER_LIST_ALIAS } });
+  const [currentFolderKey, setCurrentFolderKeyState] = useState(() => {
+    if (typeof localStorage === 'undefined') return DEFAULT_PAPER_LIST_KEY;
+    return localStorage.getItem(CURRENT_FOLDER_KEY) || DEFAULT_PAPER_LIST_KEY;
+  });
+
+  const setCurrentFolderKey = (key) => {
+    setCurrentFolderKeyState(key);
+    if (typeof localStorage !== 'undefined') localStorage.setItem(CURRENT_FOLDER_KEY, key);
+  };
+
+  const CLOUD_BUTTON_SUCCESS_MS = 3000;
 
   const refreshPapers = (database) => {
     const transaction = database.transaction(STORE_NAME, 'readonly');
@@ -808,21 +750,53 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // MASTER_TOKEN이 있으면 진입 시 클라우드에서 불러와 동일 id만 로컬에 반영
+  // 클라우드 활성 시 folders KV 로드 및 현재 문제지목록 키로 불러오기
   useEffect(() => {
     if (!db || !getCloudKV()) return;
     if (hasAutoLoadedCloudRef.current) return;
     hasAutoLoadedCloudRef.current = true;
     skipNextDebounceRef.current = true;
     const kv = getCloudKV();
-    kv.readData(EXAM_CLOUD_KV_KEY)
-      .then((record) => mergeCloudIntoLocal(record))
+    const defaultFolders = { keys: [DEFAULT_PAPER_LIST_KEY], aliases: { [DEFAULT_PAPER_LIST_KEY]: DEFAULT_PAPER_LIST_ALIAS } };
+    kv.readData(FOLDERS_KV_KEY)
+      .then((data) => {
+        if (data && Array.isArray(data.keys) && data.keys.length > 0 && data.aliases && typeof data.aliases === 'object') {
+          setFolders({ keys: data.keys, aliases: data.aliases });
+          return { keys: data.keys, aliases: data.aliases };
+        }
+        return kv.updateData(FOLDERS_KV_KEY, defaultFolders).then(() => {
+          setFolders(defaultFolders);
+          return defaultFolders;
+        });
+      })
+      .catch(() => kv.updateData(FOLDERS_KV_KEY, defaultFolders).then(() => {
+        setFolders(defaultFolders);
+        return defaultFolders;
+      }))
+      .then((foldersData) => {
+        if (!foldersData || !foldersData.keys || foldersData.keys.length === 0) return;
+        const keyToLoad = foldersData.keys.includes(currentFolderKey) ? currentFolderKey : foldersData.keys[0];
+        if (!foldersData.keys.includes(currentFolderKey)) setCurrentFolderKey(foldersData.keys[0]);
+        return kv.readData(keyToLoad).then((record) => mergeCloudIntoLocal(record));
+      })
       .then(() => {
         skipNextDebounceRef.current = true;
         addToast('클라우드에서 불러왔습니다.');
       })
       .catch(() => {});
   }, [db, cloudWorkerUrl, cloudMasterToken]);
+
+  useEffect(() => {
+    if (!cloudSaveSuccess) return;
+    const t = setTimeout(() => setCloudSaveSuccess(false), CLOUD_BUTTON_SUCCESS_MS);
+    return () => clearTimeout(t);
+  }, [cloudSaveSuccess]);
+
+  useEffect(() => {
+    if (!cloudLoadSuccess) return;
+    const t = setTimeout(() => setCloudLoadSuccess(false), CLOUD_BUTTON_SUCCESS_MS);
+    return () => clearTimeout(t);
+  }, [cloudLoadSuccess]);
 
   // 로컬 변경 후 5초 디바운스 뒤 자동 클라우드 저장
   useEffect(() => {
@@ -839,7 +813,7 @@ export default function App() {
       debounceSaveTimerRef.current = null;
       setDebouncePending(false);
       const toSave = papersRef.current;
-      kv.updateData(EXAM_CLOUD_KV_KEY, toSave).then(() => addToast('클라우드에 저장되었습니다.')).catch(() => {});
+      kv.updateData(currentFolderKey, toSave).then(() => addToast('클라우드에 저장되었습니다.')).catch(() => {});
     }, 5000);
     return () => {
       if (debounceSaveTimerRef.current) clearTimeout(debounceSaveTimerRef.current);
@@ -860,7 +834,7 @@ export default function App() {
         const kv = getCloudKV();
         if (!kv) return;
         const toSave = papersRef.current;
-        kv.updateData(EXAM_CLOUD_KV_KEY, toSave).then(() => addToast('클라우드에 저장되었습니다.')).catch(() => {});
+        kv.updateData(currentFolderKey, toSave).then(() => addToast('클라우드에 저장되었습니다.')).catch(() => {});
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -1235,9 +1209,9 @@ export default function App() {
   const closeAlertModal = () => setAlertModal((prev) => ({ ...prev, open: false }));
 
   const [toasts, setToasts] = useState([]);
-  const addToast = (message, duration = 3000) => {
+  const addToast = (message, duration = 3000, variant = 'default') => {
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `toast-${Date.now()}`;
-    setToasts((prev) => [...prev, { id, message, duration }]);
+    setToasts((prev) => [...prev, { id, message, duration, variant }]);
   };
   const removeToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
@@ -1257,6 +1231,20 @@ export default function App() {
       const req = store.getAll();
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
+    });
+  };
+
+  const clearAllPapersFromDB = () => {
+    if (!db) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.clear();
+      tx.oncomplete = () => {
+        refreshPapers(db);
+        resolve();
+      };
+      tx.onerror = () => reject(tx.error);
     });
   };
 
@@ -1353,7 +1341,7 @@ export default function App() {
       const url = (cloudWorkerUrl || '').trim().replace(/\/$/, '');
       if (url) {
         const kv = new CloudflareKV({ baseUrl: url, tokenName: CLOUD_MASTER_TOKEN_KEY });
-        kv.readData(EXAM_CLOUD_KV_KEY)
+        kv.readData(currentFolderKey)
           .then((record) => mergeCloudIntoLocal(record))
           .then(() => addToast('클라우드에서 불러왔습니다.'))
           .catch(() => {});
@@ -1437,33 +1425,46 @@ export default function App() {
       return;
     }
     try {
-      await kv.readData(EXAM_CLOUD_KV_KEY);
-      showAlert('연결 성공', '연결되었습니다.');
+      await kv.readData(FOLDERS_KV_KEY);
+      addToast('연결되었습니다.');
     } catch (err) {
-      showAlert('연결 실패', '연결 실패: ' + (err?.message || String(err)), 'danger');
+      const msg = err?.message || String(err);
+      if (msg.includes('404') || msg.includes('Not Found')) {
+        addToast('연결되었습니다.');
+        return;
+      }
+      showAlert('연결 실패', '연결 실패: ' + msg, 'danger');
+      throw err;
     }
   };
 
   const handleCloudSave = async () => {
+    if (cloudSaveLoading || cloudSaveSuccess) return;
     const kv = getCloudKV();
     if (!kv) {
       showAlert('설정 필요', '설정에서 Worker URL과 MASTER_TOKEN을 입력해 주세요.', 'warning');
       return;
     }
+    setCloudSaveLoading(true);
     try {
-      await kv.updateData(EXAM_CLOUD_KV_KEY, papers);
+      await kv.updateData(currentFolderKey, papers);
       addToast('클라우드에 저장되었습니다.');
+      setCloudSaveSuccess(true);
     } catch (err) {
       showAlert('저장 실패', '저장 실패: ' + (err?.message || String(err)), 'danger');
+    } finally {
+      setCloudSaveLoading(false);
     }
   };
 
   const handleCloudLoad = async () => {
+    if (cloudLoadLoading || cloudLoadSuccess) return;
     const kv = getCloudKV();
     if (!kv) {
       showAlert('설정 필요', '설정에서 Worker URL과 MASTER_TOKEN을 입력해 주세요.', 'warning');
       return;
     }
+    setCloudLoadLoading(true);
     skipNextDebounceRef.current = true;
     if (debounceSaveTimerRef.current) {
       clearTimeout(debounceSaveTimerRef.current);
@@ -1471,16 +1472,19 @@ export default function App() {
       setDebouncePending(false);
     }
     try {
-      const record = await kv.readData(EXAM_CLOUD_KV_KEY);
-      handleLoadFromCloud(record);
+      const record = await kv.readData(currentFolderKey);
+      await handleLoadFromCloud(record);
       addToast('클라우드에서 불러왔습니다.');
+      setCloudLoadSuccess(true);
     } catch (err) {
       showAlert('불러오기 실패', '불러오기 실패: ' + (err?.message || String(err)), 'danger');
+    } finally {
+      setCloudLoadLoading(false);
     }
   };
 
   const handleLoadFromCloud = (record) => {
-    if (!db) return;
+    if (!db) return Promise.resolve();
     try {
       const list = Array.isArray(record) ? record : (record != null ? [record] : []);
       const base = Date.now();
@@ -1506,13 +1510,133 @@ export default function App() {
         if (paper.questions.length === 0) paper.questions = [{ id: base + i * 10000, userAnswer: '', correctAnswer: '', type: 'input', starred: false, selectedOption: null, memo: '' }];
         toAdd.push(paper);
       }
-      const transaction = db.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      toAdd.forEach((paper) => store.add(paper));
-      transaction.oncomplete = () => refreshPapers(db);
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        toAdd.forEach((paper) => store.add(paper));
+        transaction.oncomplete = () => {
+          refreshPapers(db);
+          resolve();
+        };
+        transaction.onerror = () => reject(transaction.error);
+      });
     } catch (err) {
       showAlert('데이터 오류', '불러온 데이터 형식이 올바르지 않습니다.', 'danger');
+      return Promise.reject(err);
     }
+  };
+
+  const handleSwitchFolder = async (newKey) => {
+    if (newKey === currentFolderKey) return;
+    const kv = getCloudKV();
+    if (!kv) return;
+    setCloudLoadLoading(true);
+    const oldKey = currentFolderKey;
+    const toUpload = papersRef.current;
+    try {
+      await kv.updateData(oldKey, toUpload);
+    } catch {
+      addToast('작업 실패', 3000, 'error');
+      setCloudLoadLoading(false);
+      return;
+    }
+    try {
+      await clearAllPapersFromDB();
+      const record = await kv.readData(newKey).catch(() => []);
+      await handleLoadFromCloud(record);
+      setCurrentFolderKey(newKey);
+      setView('home');
+      setActivePaperId(null);
+      navigate('/?');
+      addToast('클라우드에서 불러왔습니다.');
+    } catch {
+      addToast('작업 실패', 3000, 'error');
+    } finally {
+      setCloudLoadLoading(false);
+    }
+  };
+
+  const handleAddFolder = async () => {
+    const kv = getCloudKV();
+    if (!kv) {
+      showAlert('설정 필요', '클라우드 저장을 먼저 설정해 주세요.', 'warning');
+      return;
+    }
+    const alias = window.prompt('새 문제지 목록의 별칭을 입력하세요', '');
+    if (alias == null) return;
+    const key = `list-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
+    const newKeys = [...(folders.keys || []), key];
+    const newAliases = { ...(folders.aliases || {}), [key]: (alias || '').trim() || key };
+    const newFolders = { keys: newKeys, aliases: newAliases };
+    try {
+      await kv.updateData(FOLDERS_KV_KEY, newFolders);
+      setFolders(newFolders);
+      addToast('새 문제지 목록이 추가되었습니다.');
+    } catch (err) {
+      showAlert('추가 실패', '저장 실패: ' + (err?.message || String(err)), 'danger');
+    }
+  };
+
+  const handleOpenDeleteFolderModal = (key) => {
+    setDeleteFolderKey(key);
+    setDeleteFolderModalOpen(true);
+  };
+
+  const handleRenameFolder = async (key, newAlias) => {
+    const kv = getCloudKV();
+    if (!kv) return;
+    const trimmed = (newAlias || '').trim() || key;
+    const newAliases = { ...(folders.aliases || {}), [key]: trimmed };
+    const newFolders = { keys: folders.keys || [], aliases: newAliases };
+    try {
+      await kv.updateData(FOLDERS_KV_KEY, newFolders);
+      setFolders(newFolders);
+      addToast('이름이 변경되었습니다.');
+    } catch (err) {
+      showAlert('변경 실패', '저장 실패: ' + (err?.message || String(err)), 'danger');
+    }
+  };
+
+  const handleCloseDeleteFolderModal = () => {
+    setDeleteFolderModalOpen(false);
+    setDeleteFolderKey(null);
+  };
+
+  const handleConfirmDeleteFolder = async () => {
+    if (!deleteFolderKey) return;
+    if ((folders.keys || []).length <= 1) {
+      showAlert('삭제 불가', '마지막 문제지 목록은 삭제할 수 없습니다.', 'warning');
+      handleCloseDeleteFolderModal();
+      return;
+    }
+    const kv = getCloudKV();
+    if (!kv) {
+      handleCloseDeleteFolderModal();
+      return;
+    }
+    const newKeys = folders.keys.filter((k) => k !== deleteFolderKey);
+    const newAliases = { ...folders.aliases };
+    delete newAliases[deleteFolderKey];
+    const newFolders = { keys: newKeys, aliases: newAliases };
+    try {
+      await kv.deleteData(deleteFolderKey).catch(() => {});
+      await kv.updateData(FOLDERS_KV_KEY, newFolders);
+      setFolders(newFolders);
+      if (currentFolderKey === deleteFolderKey) {
+        const nextKey = newKeys[0];
+        setCurrentFolderKey(nextKey);
+        await clearAllPapersFromDB();
+        const record = await kv.readData(nextKey).catch(() => []);
+        await handleLoadFromCloud(record);
+        setView('home');
+        setActivePaperId(null);
+        navigate('/?');
+      }
+      addToast('문제지 목록이 삭제되었습니다.');
+    } catch (err) {
+      addToast('작업 실패', 3000, 'error');
+    }
+    handleCloseDeleteFolderModal();
   };
 
   const currentView =
@@ -1531,6 +1655,10 @@ export default function App() {
         onImportJSON={handleImportJSON}
         onCloudSave={handleCloudSave}
         onCloudLoad={handleCloudLoad}
+        cloudSaveLoading={cloudSaveLoading}
+        cloudSaveSuccess={cloudSaveSuccess}
+        cloudLoadLoading={cloudLoadLoading}
+        cloudLoadSuccess={cloudLoadSuccess}
         importInputRef={importInputRef}
         copyModalOpen={copyModalOpen}
         copyModalPaperId={copyModalPaperId}
@@ -1542,6 +1670,10 @@ export default function App() {
         onOpenDeleteModal={handleOpenDeleteModal}
         onCloseDeleteModal={handleCloseDeleteModal}
         onConfirmDelete={handleConfirmDelete}
+        folders={folders}
+        currentFolderKey={currentFolderKey}
+        onSwitchFolder={handleSwitchFolder}
+        cloudEnabled={!!getCloudKV()}
       />
     ) : view === 'settings' ? (
       <SettingsView
@@ -1555,6 +1687,12 @@ export default function App() {
         onImportCloudBackup={handleImportCloudBackupClick}
         setView={setView}
         navigate={navigate}
+        folders={folders}
+        currentFolderKey={currentFolderKey}
+        cloudEnabled={!!getCloudKV()}
+        onAddFolder={handleAddFolder}
+        onOpenDeleteFolderModal={handleOpenDeleteFolderModal}
+        onRenameFolder={handleRenameFolder}
       />
     ) : view === 'howto' ? (
       <HowToView
@@ -1690,6 +1828,17 @@ export default function App() {
         message={alertModal.message}
         confirmText="확인"
         type={alertModal.type}
+      />
+
+      <ConfirmModal
+        isOpen={deleteFolderModalOpen}
+        onClose={handleCloseDeleteFolderModal}
+        onConfirm={handleConfirmDeleteFolder}
+        title="문제지 목록 삭제"
+        message={deleteFolderKey ? `"${folders.aliases?.[deleteFolderKey] ?? deleteFolderKey}" 문제지 목록을 삭제하시겠습니까? 클라우드에 저장된 해당 목록 데이터도 삭제되며 되돌릴 수 없습니다.` : ''}
+        confirmText="삭제"
+        cancelText="취소"
+        type="danger"
       />
 
       <PasswordConfirmModal
