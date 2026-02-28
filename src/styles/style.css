@@ -2262,7 +2262,8 @@ div.smart-blue-theme hr {
   transition: all 0.3s;
   opacity: 1;
   z-index: 20000;
-  background-color: var(--md-bk-color);
+  /* background-color: var(--md-bk-color); */
+  background-color: var(--color-slate-700);
 }
 .md-editor-dropdown-hidden {
   opacity: 0;

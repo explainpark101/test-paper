@@ -23,7 +23,6 @@ import {
 import CloudflareKV from './utils/CloudflareKV';
 
 import RangeSizeSelect from './components/RangeSizeSelect';
-import PrintScoreView from './components/PrintScoreView';
 import RadioToggle from './components/RadioToggle';
 import ExamQuestionItem from './components/ExamQuestionItem';
 import ScoreQuestionItem from './components/ScoreQuestionItem';
@@ -348,7 +347,6 @@ function ExamView({ activePaper, setView, navigate, activePaperId, onUpdateAnswe
 
 function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorrectAnswer, onUpdateMemo, onResetAllCorrectAnswers, onToggleStar, onUpdateTitle, onUpdateSubtitle }) {
   const [rangeSize, setRangeSize] = useState(10);
-  const [showPrintView, setShowPrintView] = useState(false);
   const [showOnlyStarred, setShowOnlyStarred] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [filterChecks, setFilterChecks] = useState({
@@ -520,13 +518,13 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">좌측: 내 답변 | 우측: 실제 정답 입력</p>
         </div>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setShowPrintView(true)}
+          <Link
+            to={`/print-preview?id=${activePaperId ?? ''}`}
+            state={{ title: activePaper?.title ?? '', questions: effectiveQuestions }}
             className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-5 py-2.5 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all shadow-sm"
           >
             <Printer className="w-4 h-4" /> 인쇄 미리보기
-          </button>
+          </Link>
           <button 
             onClick={() => { setView('exam'); navigate(`/?id=${activePaperId}&view=exam`); }}
             className="bg-indigo-600 dark:bg-indigo-500 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all flex items-center gap-2 shadow-lg shadow-indigo-100 dark:shadow-indigo-900/50"
@@ -535,14 +533,6 @@ function ScoreView({ activePaper, setView, navigate, activePaperId, onUpdateCorr
           </button>
         </div>
       </div>
-
-      {showPrintView && (
-        <PrintScoreView
-          title={activePaper?.title ?? ''}
-          questions={effectiveQuestions}
-          onClose={() => setShowPrintView(false)}
-        />
-      )}
 
       <details 
         className="sticky top-0 z-10 py-3 px-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm space-y-3"
