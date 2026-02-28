@@ -917,6 +917,12 @@ export default function App() {
 
   const activePaper = papers.find(p => p.id === activePaperId);
 
+  useEffect(() => {
+    const baseTitle = 'test-paper';
+    const paperTitle = (activePaper?.title ?? '').trim();
+    document.title = paperTitle || baseTitle;
+  }, [activePaper?.title]);
+
   // --- Handlers ---
   const handleCreatePaper = () => {
     if (!newTitle.trim()) return;
