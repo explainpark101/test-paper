@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   Plus, 
   Play, 
@@ -1741,15 +1741,15 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans selection:bg-indigo-100 dark:selection:bg-indigo-900 selection:text-indigo-900 dark:selection:text-indigo-100 pb-20">
       <div className="max-w-5xl mx-auto p-6 md:p-12">
         <header className="mb-12 flex justify-between items-center">
-          <button 
-            onClick={() => { setView('home'); setActivePaperId(null); navigate('/?'); }} 
+          <Link 
+            to={BASE_PATH}
             className="flex items-center gap-2 group"
           >
             <div className="p-2 bg-indigo-600 dark:bg-indigo-500 rounded-lg text-white group-hover:rotate-12 transition-transform shadow-lg shadow-indigo-100 dark:shadow-indigo-900/50">
               <FileText className="w-6 h-6" />
             </div>
             <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">ExamMaster</h1>
-          </button>
+          </Link>
 
           {view === 'home' && (
             <button
