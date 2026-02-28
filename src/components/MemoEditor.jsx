@@ -72,8 +72,32 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
     };
   }, [editorId]);
 
+  const handleKeyDown = (e) => {
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      const list = document.querySelectorAll('.q-memo-input');
+      const current = containerRef.current?.closest('.q-memo-input');
+      if (!list.length || !current) return;
+      const idx = Array.from(list).indexOf(current);
+      const next = list[idx + 1];
+      if (!next) return;
+      const nextEditor = next.querySelector('.cm-content[contenteditable="true"]') ?? next.querySelector('.cm-editor');
+      if (nextEditor) {
+        nextEditor.focus();
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(nextEditor);
+        range.collapse(false);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      } else {
+        next.firstElementChild?.click();
+      }
+    }
+  };
+
   return (
-    <div ref={containerRef} className={className}>
+    <div ref={containerRef} className={className} onKeyDown={handleKeyDown}>
       <MdEditor
         id={editorId}
         modelValue={value}
