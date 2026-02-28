@@ -1,6 +1,19 @@
 const MODEL = 'gemini-2.5-flash';
 const BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-const GLOBAL_PROMPT_PREFIX = `DO NOT OUTPUT ANYTHING ELSE THAN THE MARKDOWN CONTENT. 되도록이면 모든 정보는 "~임." 형태의 단조체로 적도록 해.\n\n`;
+
+/** 구조화된 출력: 요청한 개념에 대한 마크다운 문서만 허용, 문체는 단조체(~임) 또는 단어 끝맺음만 사용 (Gemini API structured output) */
+const RESPONSE_JSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    markdown: {
+      type: 'string',
+      description: '요청한 개념에 대한 마크다운 문서. 문체는 반드시 단조체(문장 끝 "~임.", "~함.") 또는 단어/구로 끝맺음하는 문체만 사용한다. 서론·결론·메타 설명 없이 본문만 포함한다. Markdown만 사용하고 코드블록으로 감싸지 않는다.'
+    }
+  },
+  required: ['markdown']
+};
+
+const GLOBAL_PROMPT_PREFIX = `응답은 반드시 JSON 객체 {"markdown": "마크다운 내용"} 형태로만 출력한다. 마크다운 내용은 "~임." 또는 단어로 끝맺는 단조체만 사용한다.\n\n`;
 const PROMPT_PREFIX = {
   bullet:
 `역할: 너는 "암기 친화 요약 편집자"다.
@@ -78,7 +91,11 @@ export async function generateMemoContent(apiKey, promptType, text, customPrompt
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: fullPrompt }] }]
+      contents: [{ parts: [{ text: fullPrompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: RESPONSE_JSON_SCHEMA
+      }
     })
   });
 
@@ -97,7 +114,14 @@ export async function generateMemoContent(apiKey, promptType, text, customPrompt
   const data = await res.json();
   const candidate = data?.candidates?.[0];
   const part = candidate?.content?.parts?.[0];
-  const generated = part?.text?.trim();
-  if (generated == null) throw new Error('응답 형식이 올바르지 않습니다.');
-  return generated;
+  const raw = part?.text?.trim();
+  if (raw == null) throw new Error('응답 형식이 올바르지 않습니다.');
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.markdown === 'string') return parsed.markdown.trim();
+  } catch {
+    // 스키마 미지원 등으로 평문이 온 경우 fallback
+  }
+  return raw;
 }
