@@ -2781,6 +2781,10 @@ div.smart-blue-theme hr {
 .md-editor .cm-editor.cm-focused {
   outline: none;
 }
+.md-editor-dark .cm-editor .cm-content,
+.dark .md-editor .cm-editor .cm-content {
+  caret-color: white;
+}
 .md-editor .cm-editor .cm-tooltip.cm-tooltip-autocomplete {
   border-radius: calc(var(--spacing) * 0.75);
 }

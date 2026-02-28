@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MdEditor, config } from 'md-editor-rt';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/style.css";
@@ -48,8 +48,32 @@ function usePrefersColorScheme() {
 function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', placeholder = '메모' }) {
   const systemTheme = usePrefersColorScheme();
   const resolvedTheme = theme ?? systemTheme;
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const focusEditor = () => {
+      const el = containerRef.current?.querySelector('.cm-content[contenteditable="true"]') ?? containerRef.current?.querySelector('.cm-editor');
+      if (el) {
+        el.focus();
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+    };
+    const t = setTimeout(focusEditor, 0);
+    const t2 = setTimeout(focusEditor, 50);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(t2);
+    };
+  }, [editorId]);
+
   return (
-    <div className={className}>
+    <div ref={containerRef} className={className}>
       <MdEditor
         id={editorId}
         modelValue={value}
