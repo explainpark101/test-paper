@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Star } from 'lucide-react';
-import { parseMarkdown } from '../utils/markdownParser';
+import MemoEditor from './MemoEditor';
+import MemoViewer from './MemoViewer';
 
 function ScoreQuestionItem({ 
   question, 
@@ -13,61 +14,8 @@ function ScoreQuestionItem({
   onToggleStar,
   scoreInputIndex
 }) {
-  const memoRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
-
-  useEffect(() => {
-    if (memoRef.current && !isFocused) {
-      // 포커스가 없을 때만 높이 조정
-      memoRef.current.style.height = 'auto';
-      memoRef.current.style.height = `${memoRef.current.scrollHeight}px`;
-    }
-  }, [question.memo, isFocused]);
-
-  const handleMemoFocus = () => {
-    setIsFocused(true);
-    // 포커스 시 텍스트로 변경
-    if (memoRef.current) {
-      memoRef.current.innerText = question.memo || '';
-    }
-  };
-
-  const handleMemoBlur = () => {
-    setIsFocused(false);
-    memoRef.current?.querySelectorAll('b').forEach(b => {
-      b.outerHTML = `**${b.innerText}**`;
-    });
-    const text = memoRef.current?.innerText || '';
-    onUpdateMemo(originalIndex, text);
-  };
-
-  const handleMemoInput = (e) => {
-    // Auto-resize
-    e.target.style.height = 'auto';
-    e.target.style.height = `${e.target.scrollHeight}px`;
-  };
-
-  const handleMemoPaste = (e) => {
-    // HTML 붙여넣기 방지, 순수 텍스트만 허용
-    e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-    document.execCommand('insertText', false, text);
-  };
-
-  const handleMemoKeyDown = (e) => {
-    if (!memoRef.current) return;
-
-    // Ctrl+Enter: 다음 메모로 이동
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      const memos = document.querySelectorAll('.q-memo-input');
-      const next = memos[scoreInputIndex + 1];
-      if (next instanceof HTMLElement) {
-        next.focus();
-      }
-      return;
-    }
-  };
+  const memoEditorId = `memo-${scoreInputIndex}-${question.id}`;
 
   return (
     <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4 items-stretch">
@@ -118,44 +66,28 @@ function ScoreQuestionItem({
         placeholder="정답 입력 (Enter: 다음)..."
       />
       <div
-        ref={memoRef}
-        className={`q-memo-input w-full p-5 rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] resize-none bg-white dark:bg-gray-800 overflow-hidden dark:text-gray-100 ${
+        className={`q-memo-input w-full rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] overflow-hidden bg-white dark:bg-gray-800 dark:text-gray-100 ${
           isFocused ? 'border-indigo-500 dark:border-indigo-400' : 'border-gray-100 dark:border-gray-700'
         }`}
-        contentEditable
-        suppressContentEditableWarning
-        onFocus={handleMemoFocus}
-        onBlur={handleMemoBlur}
-        onInput={handleMemoInput}
-        onPaste={handleMemoPaste}
-        onKeyDown={handleMemoKeyDown}
-        style={{ 
-          minHeight: '60px',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word'
-        }}
-        data-placeholder="메모"
-        dangerouslySetInnerHTML={isFocused ? undefined : { __html: parseMarkdown(question.memo || '') }}
       >
-        {isFocused ? question.memo || '' : undefined}
+        {isFocused ? (
+          <MemoEditor
+            editorId={memoEditorId}
+            value={question.memo || ''}
+            onChange={(v) => onUpdateMemo(originalIndex, v)}
+            onBlur={() => setIsFocused(false)}
+            className="min-h-[60px] [&_.md-editor]:min-h-[60px] [&_.md-editor-content]:min-h-[60px]"
+            placeholder="메모"
+          />
+        ) : (
+          <MemoViewer
+            editorId={memoEditorId}
+            value={question.memo || ''}
+            onFocus={() => setIsFocused(true)}
+            className="p-5 min-h-[60px] cursor-text [&_.md-editor-preview]:p-0! [&_.md-editor-preview-wrapper]:p-0!"
+          />
+        )}
       </div>
-      <style>{`
-        [contenteditable][data-placeholder]:empty:before {
-          content: attr(data-placeholder);
-          color: #9ca3af;
-          pointer-events: none;
-        }
-        .dark [contenteditable][data-placeholder]:empty:before {
-          color: #6b7280;
-        }
-        [contenteditable]:not(:focus) h1 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; display: block; }
-        [contenteditable]:not(:focus) h2 { font-size: 1.3em; font-weight: bold; margin: 0.4em 0; display: block; }
-        [contenteditable]:not(:focus) h3 { font-size: 1.1em; font-weight: bold; margin: 0.3em 0; display: block; }
-        [contenteditable]:not(:focus) strong { font-weight: bold; }
-        [contenteditable]:not(:focus) em { font-style: italic; }
-        [contenteditable]:not(:focus) u { text-decoration: underline; }
-        [contenteditable]:not(:focus) del { text-decoration: line-through; }
-      `}</style>
     </div>
   );
 }

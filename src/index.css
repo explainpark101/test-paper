@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/theme-variables.css";
 
 @font-face {
   font-family: 'A2z';
