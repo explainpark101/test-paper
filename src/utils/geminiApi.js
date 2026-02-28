@@ -1,6 +1,6 @@
 const MODEL = 'gemini-2.5-flash';
 const BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-const GLOBAL_PROMPT_PREFIX = `DO NOT OUTPUT ANYTHING ELSE THAN THE MARKDOWN CONTENT. 되도록이면 모든 정보는 "~임." 형태의 단조체로 적도록 해.`;
+const GLOBAL_PROMPT_PREFIX = `DO NOT OUTPUT ANYTHING ELSE THAN THE MARKDOWN CONTENT. 되도록이면 모든 정보는 "~임." 형태의 단조체로 적도록 해.\n\n`;
 const PROMPT_PREFIX = {
   bullet:
 `역할: 너는 "암기 친화 요약 편집자"다.
@@ -56,7 +56,7 @@ const PROMPT_PREFIX = {
 export function buildFullPrompt(promptType, customPrompt, text) {
   const body = (text || '').trim();
   if (promptType === 'custom' && customPrompt != null) {
-    return (customPrompt.trim() + '\n\n' + body).trim();
+    return GLOBAL_PROMPT_PREFIX + (customPrompt.trim() + '\n\n' + body).trim();
   }
   const prefix = PROMPT_PREFIX[promptType] ?? PROMPT_PREFIX.bullet;
   return GLOBAL_PROMPT_PREFIX + prefix + body;

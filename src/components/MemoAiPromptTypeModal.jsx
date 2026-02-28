@@ -151,7 +151,13 @@ function MemoAiPromptTypeModal({ isOpen, onClose, onSelect, loading = false, ori
             <textarea
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="예: 아래 내용을 3문장으로 요약해 주세요."
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  if (!loading && canRun) handleRun();
+                }
+              }}
+              placeholder="예: 아래 내용을 3문장으로 요약해 주세요. (Ctrl+Enter로 실행)"
               rows={3}
               disabled={loading}
               className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-transparent dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none resize-none"
