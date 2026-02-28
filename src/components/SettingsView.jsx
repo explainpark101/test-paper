@@ -19,9 +19,13 @@ function SettingsView({
   cloudEnabled,
   onOpenAddFolderModal,
   onOpenDeleteFolderModal,
-  onRenameFolder
+  onRenameFolder,
+  geminiApiKey,
+  onGeminiApiKeyChange,
+  onGeminiSaveClick
 }) {
   const [showMasterToken, setShowMasterToken] = useState(false);
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [connectionSuccess, setConnectionSuccess] = useState(false);
   const [editingFolderKey, setEditingFolderKey] = useState(null);
@@ -153,6 +157,51 @@ function SettingsView({
               클라우드 저장 정보 가져오기
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 dark:text-gray-100">
+          <Settings className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> Gemini API 키 (메모 AI)
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          채점 화면의 메모 칸에서 AI 버튼으로 내용을 요약·정리할 때 사용합니다. API 키는 세션 동안만 사용되며, 저장 시 비밀번호로 암호화해 이 기기에 보관할 수 있습니다.
+        </p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API 키</label>
+            <div className="relative flex">
+              <input
+                type={showGeminiKey ? 'text' : 'password'}
+                value={geminiApiKey ?? ''}
+                onChange={(e) => onGeminiApiKeyChange?.(e.target.value)}
+                placeholder="Google AI Studio에서 발급한 API 키"
+                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 pr-10 bg-transparent dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none"
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded"
+                onMouseDown={() => setShowGeminiKey(true)}
+                onMouseUp={() => setShowGeminiKey(false)}
+                onMouseLeave={() => setShowGeminiKey(false)}
+                aria-label={showGeminiKey ? '키 숨기기' : '키 보기'}
+              >
+                {showGeminiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+              API 키는 <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 underline hover:no-underline">Google AI Studio(https://aistudio.google.com/)</a>에서 발급받을 수 있습니다.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onGeminiSaveClick}
+            disabled={!(geminiApiKey ?? '').trim()}
+            className="bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all text-sm disabled:opacity-50 disabled:pointer-events-none"
+          >
+            암호화하여 저장
+          </button>
         </div>
       </div>
 

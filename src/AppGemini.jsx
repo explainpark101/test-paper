@@ -36,6 +36,7 @@ import SettingsView from './components/SettingsView';
 import Toast from './components/Toast';
 import PasswordConfirmModal from './components/PasswordConfirmModal';
 import { encryptMasterToken, decryptMasterToken } from './utils/masterTokenCrypto';
+import { useGeminiKey, GEMINI_API_KEY_SESSION, GEMINI_API_KEY_ENCRYPTED } from './contexts/GeminiKeyContext';
 
 // Base path from environment variable
 const BASE_PATH = import.meta.env.VITE_BASE_PATH || '/';
@@ -714,6 +715,8 @@ export default function App() {
   const [importFileContent, setImportFileContent] = useState(null);
   const [importError, setImportError] = useState('');
   const cloudBackupFileInputRef = useRef(null);
+  const { apiKey: geminiApiKey, setApiKey: setGeminiApiKey } = useGeminiKey();
+  const [showGeminiSavePasswordModal, setShowGeminiSavePasswordModal] = useState(false);
   const [cloudSaveLoading, setCloudSaveLoading] = useState(false);
   const [cloudSaveSuccess, setCloudSaveSuccess] = useState(false);
   const [cloudLoadLoading, setCloudLoadLoading] = useState(false);
@@ -1181,9 +1184,11 @@ export default function App() {
 
   useEffect(() => {
     if (typeof localStorage === 'undefined' || typeof sessionStorage === 'undefined') return;
-    const hasEncrypted = !!localStorage.getItem(CLOUD_MASTER_TOKEN_ENCRYPTED_KEY);
-    const hasSessionToken = !!sessionStorage.getItem(CLOUD_MASTER_TOKEN_KEY);
-    if (hasEncrypted && !hasSessionToken) setShowUnlockModal(true);
+    const cloudEnc = !!localStorage.getItem(CLOUD_MASTER_TOKEN_ENCRYPTED_KEY);
+    const cloudSession = !!sessionStorage.getItem(CLOUD_MASTER_TOKEN_KEY);
+    const geminiEnc = !!localStorage.getItem(GEMINI_API_KEY_ENCRYPTED);
+    const geminiSession = !!sessionStorage.getItem(GEMINI_API_KEY_SESSION);
+    if ((cloudEnc && !cloudSession) || (geminiEnc && !geminiSession)) setShowUnlockModal(true);
   }, []);
 
   useEffect(() => {
@@ -1328,18 +1333,26 @@ export default function App() {
   const handleUnlockConfirm = async (password) => {
     if (!password.trim()) return;
     setUnlockError('');
-    const encrypted = typeof localStorage !== 'undefined' ? localStorage.getItem(CLOUD_MASTER_TOKEN_ENCRYPTED_KEY) : null;
-    if (!encrypted) {
+    const cloudEncrypted = typeof localStorage !== 'undefined' ? localStorage.getItem(CLOUD_MASTER_TOKEN_ENCRYPTED_KEY) : null;
+    const geminiEncrypted = typeof localStorage !== 'undefined' ? localStorage.getItem(GEMINI_API_KEY_ENCRYPTED) : null;
+    if (!cloudEncrypted && !geminiEncrypted) {
       setShowUnlockModal(false);
       return;
     }
     try {
-      const decrypted = await decryptMasterToken(encrypted, password);
-      setCloudMasterToken(decrypted);
-      if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(CLOUD_MASTER_TOKEN_KEY, decrypted);
+      if (cloudEncrypted) {
+        const decrypted = await decryptMasterToken(cloudEncrypted, password);
+        setCloudMasterToken(decrypted);
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(CLOUD_MASTER_TOKEN_KEY, decrypted);
+      }
+      if (geminiEncrypted) {
+        const decrypted = await decryptMasterToken(geminiEncrypted, password);
+        setGeminiApiKey(decrypted);
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(GEMINI_API_KEY_SESSION, decrypted);
+      }
       setShowUnlockModal(false);
       const url = (cloudWorkerUrl || '').trim().replace(/\/$/, '');
-      if (url) {
+      if (url && cloudEncrypted) {
         const kv = new CloudflareKV({ baseUrl: url, tokenName: CLOUD_MASTER_TOKEN_KEY });
         kv.readData(currentFolderKey)
           .then((record) => mergeCloudIntoLocal(record))
@@ -1394,6 +1407,23 @@ export default function App() {
       }
     } catch {
       setImportError('비밀번호가 올바르지 않거나 파일 형식이 맞지 않습니다.');
+    }
+  };
+
+  const handleGeminiSavePasswordConfirm = async (password) => {
+    if (!password.trim()) return;
+    const key = (geminiApiKey || '').trim();
+    if (!key) {
+      showAlert('저장 실패', 'API 키를 먼저 입력하세요.', 'warning');
+      return;
+    }
+    try {
+      const encrypted = await encryptMasterToken(key, password);
+      if (typeof localStorage !== 'undefined') localStorage.setItem(GEMINI_API_KEY_ENCRYPTED, encrypted);
+      setShowGeminiSavePasswordModal(false);
+      showAlert('저장 완료', 'Gemini API 키가 암호화되어 저장되었습니다.');
+    } catch (err) {
+      showAlert('저장 실패', '암호화 중 오류가 발생했습니다. ' + (err?.message || ''), 'danger');
     }
   };
 
@@ -1696,6 +1726,9 @@ export default function App() {
         onOpenAddFolderModal={handleOpenAddFolderModal}
         onOpenDeleteFolderModal={handleOpenDeleteFolderModal}
         onRenameFolder={handleRenameFolder}
+        geminiApiKey={geminiApiKey}
+        onGeminiApiKeyChange={setGeminiApiKey}
+        onGeminiSaveClick={() => setShowGeminiSavePasswordModal(true)}
       />
     ) : view === 'howto' ? (
       <HowToView
@@ -1860,8 +1893,8 @@ export default function App() {
         isOpen={showUnlockModal}
         onClose={() => { setShowUnlockModal(false); setUnlockError(''); }}
         onConfirm={handleUnlockConfirm}
-        title="로그인"
-        message="클라우드 백업을 사용하기 위해 설정하셨던 비밀번호를 입력하세요."
+        title="클라우드 및 메모 AI 복구"
+        message="클라우드 저장과 메모 AI에 사용한 비밀번호를 입력하세요. 동일한 비밀번호로 한 번에 복구됩니다."
         confirmText="확인"
         cancelText="취소"
         error={unlockError}
@@ -1872,7 +1905,7 @@ export default function App() {
         onClose={() => setShowSavePasswordModal(false)}
         onConfirm={handleSavePasswordConfirm}
         title="클라우드 백업 비밀번호 설정"
-        message="클라우드 백업용 MASTER_KEY를 암호화하기 위한 비밀번호를 입력하세요. 이 비밀번호를 잊어버리면 저장된 클라우드에 데이터를 백업하거나 복구할 수 없습니다. 반드시 잊지 않도록 하세요."
+        message="클라우드 백업용 MASTER_KEY를 암호화할 비밀번호를 입력하세요. 이 비밀번호는 메모 AI(Gemini API 키) 암호화에도 사용됩니다. 잊어버리면 복구할 수 없으니 반드시 잊지 않도록 하세요."
         confirmText="저장"
         cancelText="취소"
         type="warning"
@@ -1897,6 +1930,17 @@ export default function App() {
         confirmText="확인"
         cancelText="취소"
         error={importError}
+      />
+
+      <PasswordConfirmModal
+        isOpen={showGeminiSavePasswordModal}
+        onClose={() => setShowGeminiSavePasswordModal(false)}
+        onConfirm={handleGeminiSavePasswordConfirm}
+        title="Gemini API 키 암호화 저장"
+        message="클라우드 저장과 동일한 비밀번호를 입력하세요. 이 비밀번호로 복구 시 클라우드와 메모 AI를 한 번에 복구할 수 있습니다."
+        confirmText="저장"
+        cancelText="취소"
+        type="warning"
       />
 
       <input

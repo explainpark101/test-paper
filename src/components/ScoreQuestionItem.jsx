@@ -15,6 +15,7 @@ function ScoreQuestionItem({
   scoreInputIndex
 }) {
   const [isFocused, setIsFocused] = useState(false);
+  const [aiFlowOpen, setAiFlowOpen] = useState(false);
   const memoEditorId = `memo-${scoreInputIndex}-${question.id}`;
 
   return (
@@ -70,12 +71,13 @@ function ScoreQuestionItem({
           isFocused ? 'border-indigo-500 dark:border-indigo-400' : 'border-gray-100 dark:border-gray-700'
         }`}
       >
-        {isFocused ? (
+        {isFocused || aiFlowOpen ? (
           <MemoEditor
             editorId={memoEditorId}
             value={question.memo || ''}
             onChange={(v) => onUpdateMemo(originalIndex, v)}
             onBlur={() => setIsFocused(false)}
+            onAiFlowOpenChange={setAiFlowOpen}
             className="min-h-[60px] [&_.md-editor]:min-h-[60px] [&_.md-editor-content]:min-h-[60px]"
             placeholder="메모"
           />
