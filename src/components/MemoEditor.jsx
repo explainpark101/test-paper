@@ -72,11 +72,13 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
     };
   }, [editorId]);
 
-  const handleKeyDown = (e) => {
-    if (e.ctrlKey && e.key === 'Enter') {
-      e.preventDefault();
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const goToNextMemo = () => {
       const list = document.querySelectorAll('.q-memo-input');
-      const current = containerRef.current?.closest('.q-memo-input');
+      const current = container.closest('.q-memo-input');
       if (!list.length || !current) return;
       const idx = Array.from(list).indexOf(current);
       const next = list[idx + 1];
@@ -93,11 +95,50 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
       } else {
         next.firstElementChild?.click();
       }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key !== 'Enter') return;
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      goToNextMemo();
+    };
+
+    const targetRef = { current: null };
+    const attach = () => {
+      const el = container.querySelector('.cm-content[contenteditable="true"]') ?? container.querySelector('.cm-editor');
+      if (el) {
+        targetRef.current = el;
+        el.addEventListener('keydown', handleKeyDown, true);
+        return true;
+      }
+      return false;
+    };
+
+    if (!attach()) {
+      const t = setTimeout(() => attach(), 100);
+      const t2 = setTimeout(() => attach(), 300);
+      return () => {
+        clearTimeout(t);
+        clearTimeout(t2);
+        if (targetRef.current) {
+          targetRef.current.removeEventListener('keydown', handleKeyDown, true);
+          targetRef.current = null;
+        }
+      };
     }
-  };
+    return () => {
+      if (targetRef.current) {
+        targetRef.current.removeEventListener('keydown', handleKeyDown, true);
+        targetRef.current = null;
+      }
+    };
+  }, [editorId]);
 
   return (
-    <div ref={containerRef} className={className} onKeyDown={handleKeyDown}>
+    <div ref={containerRef} className={className}>
       <MdEditor
         id={editorId}
         modelValue={value}
