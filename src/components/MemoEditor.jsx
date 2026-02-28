@@ -264,6 +264,7 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
         onClose={() => !loading && setPromptTypeModalOpen(false)}
         onSelect={handlePromptTypeSelect}
         loading={loading}
+        originalText={value ?? ''}
       />
 
       <DiffConfirmModal

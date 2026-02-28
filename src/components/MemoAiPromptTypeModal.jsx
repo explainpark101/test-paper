@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import Radio from './Radio';
+import MemoViewer from './MemoViewer';
 
 const PROMPT_TYPES = [
   { id: 'bullet', label: '외우기 좋은 형태 (단조체 · bullet)', description: 'bullet point 형태로 변환' },
@@ -8,17 +9,19 @@ const PROMPT_TYPES = [
   { id: 'custom', label: '커스텀 프롬프트 (실험)', description: '직접 지시문 입력' }
 ];
 
-function MemoAiPromptTypeModal({ isOpen, onClose, onSelect, loading = false }) {
+function MemoAiPromptTypeModal({ isOpen, onClose, onSelect, loading = false, originalText = '' }) {
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
   const [selected, setSelected] = useState('bullet');
   const [customPrompt, setCustomPrompt] = useState('');
+  const [showPreview, setShowPreview] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
       setShouldRender(true);
       setSelected('bullet');
       setCustomPrompt('');
+      setShowPreview(true);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setIsVisible(true));
       });
@@ -63,7 +66,7 @@ function MemoAiPromptTypeModal({ isOpen, onClose, onSelect, loading = false }) {
         }`}
       />
       <div
-        className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all duration-300 ${
+        className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full p-6 transform transition-all duration-300 ${
           isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
         }`}
       >
@@ -80,35 +83,71 @@ function MemoAiPromptTypeModal({ isOpen, onClose, onSelect, loading = false }) {
           AI 변환 유형 선택
         </h3>
 
-        <div className="space-y-2 mb-6">
-          {PROMPT_TYPES.map((t) => (
-            <label
-              key={t.id}
-              className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
-                selected === t.id
-                  ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20'
-                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-              }`}
-            >
-              <Radio
-                name="promptType"
-                value={t.id}
-                checked={selected === t.id}
-                onChange={(val) => setSelected(val)}
-                disabled={loading}
-                className="mt-0.5 shrink-0"
-              />
-              <div>
-                <span className="font-medium text-gray-900 dark:text-gray-100">{t.label}</span>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t.description}</p>
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="md:w-1/2 w-full">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                원문 미리보기
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowPreview((v) => !v)}
+                className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                {showPreview ? '접기' : '펼치기'}
+              </button>
+            </div>
+            {showPreview && (
+              <div className="max-h-64 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900/40 overflow-auto text-sm">
+                {String(originalText || '').trim() ? (
+                  <div className="pointer-events-none p-3">
+                    <MemoViewer
+                      editorId="memo-ai-original-preview"
+                      value={originalText}
+                      onFocus={() => {}}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-3 text-xs text-gray-400 dark:text-gray-500">
+                    원문 메모가 비어 있습니다.
+                  </div>
+                )}
               </div>
-            </label>
-          ))}
+            )}
+          </div>
+
+          <div className="md:w-1/2 w-full space-y-2">
+            {PROMPT_TYPES.map((t) => (
+              <label
+                key={t.id}
+                className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
+                  selected === t.id
+                    ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20'
+                    : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                }`}
+              >
+                <Radio
+                  name="promptType"
+                  value={t.id}
+                  checked={selected === t.id}
+                  onChange={(val) => setSelected(val)}
+                  disabled={loading}
+                  className="mt-0.5 shrink-0"
+                />
+                <div>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{t.label}</span>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t.description}</p>
+                </div>
+              </label>
+            ))}
+          </div>
         </div>
 
         {selected === 'custom' && (
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">지시문 (메모 내용은 자동으로 붙습니다)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              지시문 (메모 내용은 자동으로 붙습니다)
+            </label>
             <textarea
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
