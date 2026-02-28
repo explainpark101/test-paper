@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
 import { MdEditor, config, NormalToolbar } from 'md-editor-rt';
+import { useNavigate } from 'react-router';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
@@ -56,8 +57,10 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
   const resolvedTheme = theme ?? systemTheme;
   const containerRef = useRef(null);
   const { apiKey: geminiApiKey } = useGeminiKey();
+  const navigate = useNavigate();
   const [promptTypeModalOpen, setPromptTypeModalOpen] = useState(false);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
+  const [missingKeyConfirmOpen, setMissingKeyConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resultText, setResultText] = useState('');
   const [transformDescription, setTransformDescription] = useState('');
@@ -152,8 +155,8 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
   }, [editorId]);
 
   useEffect(() => {
-    if (!promptTypeModalOpen && !diffModalOpen && !alertOpen) onAiFlowOpenChange?.(false);
-  }, [promptTypeModalOpen, diffModalOpen, alertOpen, onAiFlowOpenChange]);
+    if (!promptTypeModalOpen && !diffModalOpen && !missingKeyConfirmOpen && !alertOpen) onAiFlowOpenChange?.(false);
+  }, [promptTypeModalOpen, diffModalOpen, missingKeyConfirmOpen, alertOpen, onAiFlowOpenChange]);
 
   const handleBlur = (e) => {
     if (containerRef.current && e?.relatedTarget && containerRef.current.contains(e.relatedTarget)) return;
@@ -163,8 +166,7 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
   const handleAiClick = () => {
     onAiFlowOpenChange?.(true);
     if (!(geminiApiKey || '').trim()) {
-      setAlertMessage('Gemini API 키가 없습니다. 설정에서 API 키를 입력해 주세요. (Google AI Studio: https://aistudio.google.com/)');
-      setAlertOpen(true);
+      setMissingKeyConfirmOpen(true);
       return;
     }
     setPromptTypeModalOpen(true);
@@ -243,6 +245,18 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
         preview={false}
         placeholder={placeholder}
         language="ko-KR"
+      />
+
+      <ConfirmModal
+        isOpen={missingKeyConfirmOpen}
+        onClose={() => setMissingKeyConfirmOpen(false)}
+        onConfirm={() => navigate('?view=settings')}
+        title="Gemini API 키가 필요합니다"
+        message="Gemini API 키가 설정되지 않았습니다. 설정 페이지로 이동할까요?"
+        confirmText="설정으로 이동"
+        cancelText="취소"
+        type="warning"
+        variant="confirm"
       />
 
       <MemoAiPromptTypeModal

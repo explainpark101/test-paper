@@ -1771,7 +1771,7 @@ export default function App() {
       <div className="max-w-5xl mx-auto p-6 md:p-12">
         <header className="mb-12 flex justify-between items-center">
           <Link 
-            to={BASE_PATH}
+            to={BASE_PATH.startsWith('/') ? BASE_PATH : `/${BASE_PATH}`}
             className="flex items-center gap-2 group"
           >
             <div className="p-2 bg-indigo-600 dark:bg-indigo-500 rounded-lg text-white group-hover:rotate-12 transition-transform shadow-lg shadow-indigo-100 dark:shadow-indigo-900/50">
