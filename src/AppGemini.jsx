@@ -142,16 +142,21 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
           <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 dark:text-gray-100">
             <Clock className="w-4 h-4 text-indigo-500 dark:text-indigo-400" /> 최근에 열어본 문제지
           </h2>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2">
             {recentPapers.map((p) => (
               <button
                 key={p.id}
                 type="button"
                 onClick={() => { setActivePaperId(p.id); setView('exam'); navigate(`/?id=${p.id}&view=exam`); }}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 text-xs text-gray-700 dark:text-gray-200 transition-colors max-w-full"
+                className="w-full text-left px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 text-xs text-gray-700 dark:text-gray-200 transition-colors"
               >
-                <Play className="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
-                <span className="font-medium truncate max-w-[160px]">{p.title || '제목 없음'}</span>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <Play className="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
+                  <span className="font-semibold wrap-break-word">{p.title || '제목 없음'}</span>
+                </div>
+                <div className="pl-5 text-[11px] text-gray-500 dark:text-gray-400 wrap-break-word">
+                  마지막 열람: {p.openedLabel}
+                </div>
               </button>
             ))}
           </div>
@@ -745,14 +750,29 @@ export default function App() {
     if (typeof localStorage !== 'undefined') localStorage.setItem(CURRENT_FOLDER_KEY, key);
   };
 
-  const [recentPaperIds, setRecentPaperIds] = useState(() => {
+  // [{ id: string, openedAt: number }]
+  const [recentPapersState, setRecentPapersState] = useState(() => {
     if (typeof localStorage === 'undefined') return [];
     try {
       const raw = localStorage.getItem(RECENT_PAPERS_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter((id) => typeof id === 'string');
+      const now = Date.now();
+      return parsed
+        .map((item) => {
+          if (typeof item === 'string') {
+            return { id: item, openedAt: now };
+          }
+          if (item && typeof item.id === 'string') {
+            return {
+              id: item.id,
+              openedAt: typeof item.openedAt === 'number' ? item.openedAt : now,
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
     } catch {
       return [];
     }
@@ -961,9 +981,11 @@ export default function App() {
 
   const updateRecentPapers = (paperId) => {
     if (!paperId) return;
-    setRecentPaperIds((prev) => {
-      const next = [paperId, ...prev.filter((id) => id !== paperId)];
-      const limited = next.slice(0, 5);
+    setRecentPapersState((prev) => {
+      const now = Date.now();
+      const filtered = prev.filter((entry) => entry.id !== paperId);
+      const next = [{ id: paperId, openedAt: now }, ...filtered];
+      const limited = next.slice(0, 3);
       if (typeof localStorage !== 'undefined') {
         try {
           localStorage.setItem(RECENT_PAPERS_KEY, JSON.stringify(limited));
@@ -1739,9 +1761,22 @@ export default function App() {
     handleCloseDeleteFolderModal();
   };
 
-  const recentPapers = recentPaperIds
-    .map((id) => papers.find((p) => p.id === id))
-    .filter((p) => p && typeof p.id === 'string');
+  const recentPapers = recentPapersState
+    .map((entry) => {
+      const paper = papers.find((p) => p.id === entry.id);
+      if (!paper) return null;
+      const openedAt = typeof entry.openedAt === 'number' ? entry.openedAt : Date.now();
+      const d = new Date(openedAt);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      return {
+        id: paper.id,
+        title: paper.title,
+        openedLabel: `${dateStr} ${timeStr}`,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 3);
 
   const currentView =
     view === 'home' ? (
