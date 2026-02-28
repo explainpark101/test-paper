@@ -18,7 +18,8 @@ import {
   Settings,
   CloudUpload,
   CloudDownload,
-  Loader2
+  Loader2,
+  Clock
 } from 'lucide-react';
 import CloudflareKV from './utils/CloudflareKV';
 
@@ -68,7 +69,7 @@ const initDB = () => {
 };
 
 // --- View components (declared outside App to avoid re-creation on every render) ---
-function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, onCloudSave, onCloudLoad, cloudSaveLoading, cloudSaveSuccess, cloudLoadLoading, cloudLoadSuccess, importInputRef, copyModalOpen, copyModalPaperId, onOpenCopyModal, onCloseCopyModal, onConfirmCopy, deleteModalOpen, deleteModalPaperId, onOpenDeleteModal, onCloseDeleteModal, onConfirmDelete, folders, currentFolderKey, onSwitchFolder, cloudEnabled }) {
+function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNewTitle, onCreatePaper, onCopyPaper, onDeletePaper, onExportJSON, onImportJSON, onCloudSave, onCloudLoad, cloudSaveLoading, cloudSaveSuccess, cloudLoadLoading, cloudLoadSuccess, importInputRef, copyModalOpen, copyModalPaperId, onOpenCopyModal, onCloseCopyModal, onConfirmCopy, deleteModalOpen, deleteModalPaperId, onOpenDeleteModal, onCloseDeleteModal, onConfirmDelete, folders, currentFolderKey, onSwitchFolder, cloudEnabled, recentPapers }) {
   // 각 문제지의 채점 결과를 계산하는 함수
   const calculateScoreStats = (paper) => {
     if (!paper || !paper.questions) {
@@ -135,6 +136,27 @@ function HomeView({ papers, setView, setActivePaperId, navigate, newTitle, setNe
           </button>
         </div>
       </div>
+
+      {recentPapers && recentPapers.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 dark:text-gray-100">
+            <Clock className="w-4 h-4 text-indigo-500 dark:text-indigo-400" /> 최근에 열어본 문제지
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {recentPapers.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => { setActivePaperId(p.id); setView('exam'); navigate(`/?id=${p.id}&view=exam`); }}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 text-xs text-gray-700 dark:text-gray-200 transition-colors max-w-full"
+              >
+                <Play className="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
+                <span className="font-medium truncate max-w-[160px]">{p.title || '제목 없음'}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -672,6 +694,7 @@ const FOLDERS_KV_KEY = 'folders';
 const CURRENT_FOLDER_KEY = 'exam_current_folder_key';
 const DEFAULT_PAPER_LIST_KEY = 'papers';
 const DEFAULT_PAPER_LIST_ALIAS = '기본 문제지';
+const RECENT_PAPERS_KEY = 'exam_recent_papers';
 
 export default function App() {
   const [searchParams] = useSearchParams();
@@ -721,6 +744,19 @@ export default function App() {
     setCurrentFolderKeyState(key);
     if (typeof localStorage !== 'undefined') localStorage.setItem(CURRENT_FOLDER_KEY, key);
   };
+
+  const [recentPaperIds, setRecentPaperIds] = useState(() => {
+    if (typeof localStorage === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(RECENT_PAPERS_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((id) => typeof id === 'string');
+    } catch {
+      return [];
+    }
+  });
 
   const CLOUD_BUTTON_SUCCESS_MS = 3000;
 
@@ -922,6 +958,41 @@ export default function App() {
     const paperTitle = (activePaper?.title ?? '').trim();
     document.title = paperTitle || baseTitle;
   }, [activePaper?.title]);
+
+  const updateRecentPapers = (paperId) => {
+    if (!paperId) return;
+    setRecentPaperIds((prev) => {
+      const next = [paperId, ...prev.filter((id) => id !== paperId)];
+      const limited = next.slice(0, 5);
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem(RECENT_PAPERS_KEY, JSON.stringify(limited));
+        } catch {
+          // ignore
+        }
+      }
+      return limited;
+    });
+  };
+
+  useEffect(() => {
+    if ((view === 'exam' || view === 'score') && activePaperId) {
+      updateRecentPapers(activePaperId);
+    }
+  }, [view, activePaperId]);
+
+  // 설정 페이지에서 Ctrl+S / Cmd+S → 저장 (비밀번호 저장 모달 포함)
+  useEffect(() => {
+    if (view !== 'settings') return;
+    const onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSettingsSave();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [view]);
 
   // --- Handlers ---
   const handleCreatePaper = () => {
@@ -1668,6 +1739,10 @@ export default function App() {
     handleCloseDeleteFolderModal();
   };
 
+  const recentPapers = recentPaperIds
+    .map((id) => papers.find((p) => p.id === id))
+    .filter((p) => p && typeof p.id === 'string');
+
   const currentView =
     view === 'home' ? (
       <HomeView
@@ -1703,6 +1778,7 @@ export default function App() {
         currentFolderKey={currentFolderKey}
         onSwitchFolder={handleSwitchFolder}
         cloudEnabled={!!getCloudKV()}
+        recentPapers={recentPapers}
       />
     ) : view === 'settings' ? (
       <SettingsView
