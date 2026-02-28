@@ -1,20 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import Radio from './Radio';
 
 const PROMPT_TYPES = [
   { id: 'bullet', label: '외우기 좋은 형태 (단조체 · bullet)', description: 'bullet point 형태로 변환' },
-  { id: 'narrative', label: '부연설명 (서술체)', description: '더 자세한 내용을 서술체로 작성' }
+  { id: 'narrative', label: '부연설명 (서술체)', description: '더 자세한 내용을 서술체로 작성' },
+  { id: 'custom', label: '커스텀 프롬프트 (실험)', description: '직접 지시문 입력' }
 ];
 
 function MemoAiPromptTypeModal({ isOpen, onClose, onSelect, loading = false }) {
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
   const [selected, setSelected] = useState('bullet');
+  const [customPrompt, setCustomPrompt] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setShouldRender(true);
       setSelected('bullet');
+      setCustomPrompt('');
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setIsVisible(true));
       });
@@ -38,8 +42,13 @@ function MemoAiPromptTypeModal({ isOpen, onClose, onSelect, loading = false }) {
   };
 
   const handleRun = () => {
-    onSelect?.(selected);
+    onSelect?.({
+      promptType: selected,
+      customPrompt: selected === 'custom' ? customPrompt : undefined
+    });
   };
+
+  const canRun = selected !== 'custom' || (customPrompt || '').trim().length > 0;
 
   return (
     <div
@@ -75,20 +84,19 @@ function MemoAiPromptTypeModal({ isOpen, onClose, onSelect, loading = false }) {
           {PROMPT_TYPES.map((t) => (
             <label
               key={t.id}
-              className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
+              className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
                 selected === t.id
                   ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20'
                   : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
               }`}
             >
-              <input
-                type="radio"
+              <Radio
                 name="promptType"
                 value={t.id}
                 checked={selected === t.id}
-                onChange={() => setSelected(t.id)}
+                onChange={(val) => setSelected(val)}
                 disabled={loading}
-                className="mt-0.5"
+                className="mt-0.5 shrink-0"
               />
               <div>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{t.label}</span>
@@ -97,6 +105,20 @@ function MemoAiPromptTypeModal({ isOpen, onClose, onSelect, loading = false }) {
             </label>
           ))}
         </div>
+
+        {selected === 'custom' && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">지시문 (메모 내용은 자동으로 붙습니다)</label>
+            <textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              placeholder="예: 아래 내용을 3문장으로 요약해 주세요."
+              rows={3}
+              disabled={loading}
+              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-transparent dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none resize-none"
+            />
+          </div>
+        )}
 
         <div className="flex gap-3">
           <button
@@ -108,8 +130,8 @@ function MemoAiPromptTypeModal({ isOpen, onClose, onSelect, loading = false }) {
           </button>
           <button
             onClick={handleRun}
-            disabled={loading}
-            className="flex-1 px-4 py-2.5 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-all font-medium shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+            disabled={loading || !canRun}
+            className="flex-1 px-4 py-2.5 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-all font-medium shadow-lg disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

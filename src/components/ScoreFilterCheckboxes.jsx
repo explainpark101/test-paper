@@ -1,4 +1,5 @@
 import React from 'react';
+import Checkbox from './Checkbox';
 
 function ScoreFilterCheckboxes({ filterChecks, onChange }) {
   const handleChange = (key, checked) => {
@@ -44,78 +45,54 @@ function ScoreFilterCheckboxes({ filterChecks, onChange }) {
       >
         틀린 것 전부 {filterChecks.AX && filterChecks.BX && filterChecks.CX && filterChecks.NX ? 'OFF' : 'ON'}
       </button>
-      <label className="flex items-center gap-1.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={filterChecks.AO}
-          onChange={(e) => handleChange('AO', e.target.checked)}
-          className="w-4 h-4 text-green-600 dark:text-green-400 border-gray-300 dark:border-gray-600 rounded focus:ring-green-500 dark:focus:ring-green-400 bg-white dark:bg-gray-700"
-        />
-        <span className="text-green-600 dark:text-green-400 font-medium">AO</span>
-      </label>
-      <label className="flex items-center gap-1.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={filterChecks.BO}
-          onChange={(e) => handleChange('BO', e.target.checked)}
-          className="w-4 h-4 text-green-600 dark:text-green-400 border-gray-300 dark:border-gray-600 rounded focus:ring-green-500 dark:focus:ring-green-400 bg-white dark:bg-gray-700"
-        />
-        <span className="text-green-600 dark:text-green-400 font-medium">BO</span>
-      </label>
-      <label className="flex items-center gap-1.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={filterChecks.CO}
-          onChange={(e) => handleChange('CO', e.target.checked)}
-          className="w-4 h-4 text-green-600 dark:text-green-400 border-gray-300 dark:border-gray-600 rounded focus:ring-green-500 dark:focus:ring-green-400 bg-white dark:bg-gray-700"
-        />
-        <span className="text-green-600 dark:text-green-400 font-medium">CO</span>
-      </label>
-      <label className="flex items-center gap-1.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={filterChecks.AX}
-          onChange={(e) => handleChange('AX', e.target.checked)}
-          className="w-4 h-4 text-red-600 dark:text-red-400 border-gray-300 dark:border-gray-600 rounded focus:ring-red-500 dark:focus:ring-red-400 bg-white dark:bg-gray-700"
-        />
-        <span className="text-red-600 dark:text-red-400 font-medium">AX</span>
-      </label>
-      <label className="flex items-center gap-1.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={filterChecks.BX}
-          onChange={(e) => handleChange('BX', e.target.checked)}
-          className="w-4 h-4 text-red-600 dark:text-red-400 border-gray-300 dark:border-gray-600 rounded focus:ring-red-500 dark:focus:ring-red-400 bg-white dark:bg-gray-700"
-        />
-        <span className="text-red-600 dark:text-red-400 font-medium">BX</span>
-      </label>
-      <label className="flex items-center gap-1.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={filterChecks.CX}
-          onChange={(e) => handleChange('CX', e.target.checked)}
-          className="w-4 h-4 text-red-600 dark:text-red-400 border-gray-300 dark:border-gray-600 rounded focus:ring-red-500 dark:focus:ring-red-400 bg-white dark:bg-gray-700"
-        />
-        <span className="text-red-600 dark:text-red-400 font-medium">CX</span>
-      </label>
-      <label className="flex items-center gap-1.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={filterChecks.NO}
-          onChange={(e) => handleChange('NO', e.target.checked)}
-          className="w-4 h-4 text-gray-400 dark:text-gray-500 border-gray-300 dark:border-gray-600 rounded focus:ring-gray-400 dark:focus:ring-gray-500 bg-white dark:bg-gray-700"
-        />
-        <span className="text-gray-400 dark:text-gray-500 font-medium">NO</span>
-      </label>
-      <label className="flex items-center gap-1.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={filterChecks.NX}
-          onChange={(e) => handleChange('NX', e.target.checked)}
-          className="w-4 h-4 text-gray-400 dark:text-gray-500 border-gray-300 dark:border-gray-600 rounded focus:ring-gray-400 dark:focus:ring-gray-500 bg-white dark:bg-gray-700"
-        />
-        <span className="text-gray-400 dark:text-gray-500 font-medium">NX</span>
-      </label>
+      <Checkbox
+        checked={filterChecks.AO}
+        onChange={(checked) => handleChange('AO', checked)}
+        variant="green"
+        label={<span className="text-green-600 dark:text-green-400 font-medium">AO</span>}
+      />
+      <Checkbox
+        checked={filterChecks.BO}
+        onChange={(checked) => handleChange('BO', checked)}
+        variant="green"
+        label={<span className="text-green-600 dark:text-green-400 font-medium">BO</span>}
+      />
+      <Checkbox
+        checked={filterChecks.CO}
+        onChange={(checked) => handleChange('CO', checked)}
+        variant="green"
+        label={<span className="text-green-600 dark:text-green-400 font-medium">CO</span>}
+      />
+      <Checkbox
+        checked={filterChecks.AX}
+        onChange={(checked) => handleChange('AX', checked)}
+        variant="red"
+        label={<span className="text-red-600 dark:text-red-400 font-medium">AX</span>}
+      />
+      <Checkbox
+        checked={filterChecks.BX}
+        onChange={(checked) => handleChange('BX', checked)}
+        variant="red"
+        label={<span className="text-red-600 dark:text-red-400 font-medium">BX</span>}
+      />
+      <Checkbox
+        checked={filterChecks.CX}
+        onChange={(checked) => handleChange('CX', checked)}
+        variant="red"
+        label={<span className="text-red-600 dark:text-red-400 font-medium">CX</span>}
+      />
+      <Checkbox
+        checked={filterChecks.NO}
+        onChange={(checked) => handleChange('NO', checked)}
+        variant="gray"
+        label={<span className="text-gray-400 dark:text-gray-500 font-medium">NO</span>}
+      />
+      <Checkbox
+        checked={filterChecks.NX}
+        onChange={(checked) => handleChange('NX', checked)}
+        variant="gray"
+        label={<span className="text-gray-400 dark:text-gray-500 font-medium">NX</span>}
+      />
     </div>
   );
 }

@@ -109,7 +109,9 @@ function DiffConfirmModal({
             </div>
           </div>
           <div className="flex flex-col min-h-0">
-            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">AI 결과 (적용 시 대치)</span>
+            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">
+              AI 결과 (적용 시 대치)
+            </span>
             <div className="flex-1 min-h-[120px] overflow-auto p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 [&_.memo-viewer-wrap]:cursor-default">
               <MemoViewer
                 editorId="diff-modal-new"

@@ -2499,6 +2499,36 @@ div.smart-blue-theme hr {
   padding-inline-end: calc(var(--spacing) * 1.25);
   line-height: var(--leading-none);
 }
+
+/* Memo cell: 상단 툴바·AI 버튼, 하단 글자수 인디케이터 sticky */
+/* .q-memo-input .memo-editor-toolbar-top {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+  background: var(--color-white);
+}
+.dark .q-memo-input .memo-editor-toolbar-top {
+  background: var(--color-gray-800);
+}
+.q-memo-input .md-editor-toolbar-wrapper {
+  position: sticky;
+  top: 2.25rem;
+  z-index: 10;
+  background: var(--color-white);
+}
+.dark .q-memo-input .md-editor-toolbar-wrapper {
+  background: var(--color-gray-800);
+}
+.q-memo-input .md-editor-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--color-white);
+}
+.dark .q-memo-input .md-editor-footer {
+  background: var(--color-gray-800);
+} */
+
 .md-editor-clip {
   position: relative;
   display: flex;

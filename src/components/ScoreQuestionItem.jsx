@@ -67,7 +67,7 @@ function ScoreQuestionItem({
         placeholder="정답 입력 (Enter: 다음)..."
       />
       <div
-        className={`q-memo-input w-full rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] overflow-hidden bg-white dark:bg-gray-800 dark:text-gray-100 ${
+          className={`q-memo-input w-full rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] max-h-[280px] overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-800 dark:text-gray-100 ${
           isFocused ? 'border-indigo-500 dark:border-indigo-400' : 'border-gray-100 dark:border-gray-700'
         }`}
       >

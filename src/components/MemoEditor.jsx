@@ -5,7 +5,7 @@ import { MdEditor, config } from 'md-editor-rt';
 import "@/styles/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import { useGeminiKey } from '../contexts/GeminiKeyContext';
-import { generateMemoContent } from '../utils/geminiApi';
+import { generateMemoContent, buildFullPrompt } from '../utils/geminiApi';
 import MemoAiPromptTypeModal, { PROMPT_TYPES } from './MemoAiPromptTypeModal';
 import DiffConfirmModal from './DiffConfirmModal';
 import ConfirmModal from './ConfirmModal';
@@ -170,13 +170,28 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
     setPromptTypeModalOpen(true);
   };
 
-  const handlePromptTypeSelect = (promptType) => {
+  const getTransformDescription = (payload) => {
+    const { promptType, customPrompt } = payload;
+    return promptType === 'custom'
+      ? (customPrompt?.trim() ? `커스텀: ${customPrompt.trim().slice(0, 50)}${customPrompt.trim().length > 50 ? '…' : ''}` : '커스텀 프롬프트')
+      : PROMPT_TYPES.find((p) => p.id === promptType)?.label ?? promptType;
+  };
+
+  const handlePromptTypeSelect = (payload) => {
+    const { promptType, customPrompt } = typeof payload === 'string' ? { promptType: payload, customPrompt: undefined } : payload;
+    const fullPrompt = buildFullPrompt(promptType, customPrompt, value ?? '');
+    if (!fullPrompt.trim()) {
+      setAlertMessage('변환할 내용 또는 지시문을 입력하세요.');
+      setAlertOpen(true);
+      return;
+    }
+
     setLoading(true);
-    const label = PROMPT_TYPES.find((p) => p.id === promptType)?.label ?? promptType;
-    generateMemoContent(geminiApiKey, promptType, value ?? '')
+    setTransformDescription(getTransformDescription({ promptType, customPrompt }));
+
+    generateMemoContent(geminiApiKey, promptType, value ?? '', customPrompt)
       .then((text) => {
         setResultText(text);
-        setTransformDescription(label);
         setPromptTypeModalOpen(false);
         setDiffModalOpen(true);
       })
@@ -201,7 +216,7 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
 
   return (
     <div ref={containerRef} className={className}>
-      <div className="flex items-center justify-end gap-1 pb-1 mb-1 border-b border-gray-100 dark:border-gray-700 [&+.md-editor]:min-h-0">
+      <div className="memo-editor-toolbar-top flex items-center justify-end gap-1 pb-1 mb-1 border-b border-gray-100 dark:border-gray-700 [&+.md-editor]:min-h-0">
         <button
           type="button"
           onMouseDown={(e) => {
