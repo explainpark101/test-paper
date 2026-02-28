@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
-import { MdEditor, config } from 'md-editor-rt';
+import { MdEditor, config, NormalToolbar } from 'md-editor-rt';
 // import 'md-editor-rt/lib/style.css';
 import "@/styles/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
@@ -12,7 +12,7 @@ import ConfirmModal from './ConfirmModal';
 
 /**
  * 메모용 마크다운 에디터. 이미지/테이블/풀스크린 등은 비활성화.
- * toolbars: 표시할 툴바만 지정 (bold, italic, underline, quote, code, link, 목록, revoke/next)
+ * toolbars: 표시할 툴바만 지정 (bold, italic, underline, quote, codeRow, link, 목록, revoke/next)
  */
 const ALLOWED_TOOLBARS = [
   'bold',
@@ -24,11 +24,11 @@ const ALLOWED_TOOLBARS = [
   'unorderedList',
   'orderedList',
   'codeRow',
-  'code',
   'link',
   'revoke',
   'next',
   '-', // 구분선
+  0, // defToolbars[0]: AI 생성
 ];
 config({
   editorConfig: {
@@ -214,22 +214,23 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
     setDiffModalOpen(false);
   };
 
+  const aiToolbar = (
+    <NormalToolbar
+      key="ai"
+      title="메모 내용을 AI로 변환 (설정에서 API 키 입력 필요)"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onAiFlowOpenChange?.(true);
+        handleAiClick();
+      }}
+    >
+      <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+    </NormalToolbar>
+  );
+
   return (
     <div ref={containerRef} className={className}>
-      <div className="memo-editor-toolbar-top flex items-center justify-end gap-1 pb-1 mb-1 border-b border-gray-100 dark:border-gray-700 [&+.md-editor]:min-h-0">
-        <button
-          type="button"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            onAiFlowOpenChange?.(true);
-          }}
-          onClick={handleAiClick}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
-          title="메모 내용을 AI로 변환 (설정에서 API 키 입력 필요)"
-        >
-          <Sparkles className="w-3.5 h-3.5" /> AI
-        </button>
-      </div>
       <MdEditor
         id={editorId}
         modelValue={value}
@@ -237,6 +238,7 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
         onBlur={handleBlur}
         theme={resolvedTheme}
         toolbars={ALLOWED_TOOLBARS}
+        defToolbars={[aiToolbar]}
         noUploadImg
         preview={false}
         placeholder={placeholder}
