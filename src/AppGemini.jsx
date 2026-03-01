@@ -1596,7 +1596,9 @@ export default function App() {
       addToast('클라우드에서 불러왔습니다.');
       setCloudLoadSuccess(true);
     } catch (err) {
-      showAlert('불러오기 실패', '불러오기 실패: ' + (err?.message || String(err)), 'danger');
+      console.error('클라우드 불러오기 실패', err);
+      const msg = err?.message || (err != null ? String(err) : null);
+      showAlert('불러오기 실패', msg ? '불러오기 실패: ' + msg : '불러오기 실패. 자세한 내용은 콘솔(F12)을 확인하세요.', 'danger');
     } finally {
       setCloudLoadLoading(false);
     }
@@ -1632,7 +1634,7 @@ export default function App() {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(STORE_NAME, 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        toAdd.forEach((paper) => store.add(paper));
+        toAdd.forEach((paper) => store.put(paper));
         transaction.oncomplete = () => {
           refreshPapers(db);
           resolve();
