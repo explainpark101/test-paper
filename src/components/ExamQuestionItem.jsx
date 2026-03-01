@@ -16,6 +16,21 @@ function ExamQuestionItem({
   const inputRef = useRef(null);
   const popoverRef = useRef(null);
   const blurTimeoutRef = useRef(null);
+  const containerRef = useRef(null);
+
+  // Alt+A / Alt+B / Alt+C 로 ABC 선택 토글 (포커스가 이 문제 안에 있을 때만)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!e.altKey || !containerRef.current?.contains(document.activeElement)) return;
+      const key = e.key?.toLowerCase();
+      if (key !== 'a' && key !== 'b' && key !== 'c') return;
+      const option = key.toUpperCase();
+      onUpdateSelectedOption(index, question.selectedOption === option ? null : option);
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [index, question.selectedOption, onUpdateSelectedOption]);
 
   useEffect(() => {
     if (showPopover) {
@@ -89,7 +104,7 @@ function ExamQuestionItem({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
+    <div ref={containerRef} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
           <span className="text-xs font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest">
