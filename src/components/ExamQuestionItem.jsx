@@ -14,14 +14,17 @@ function ExamQuestionItem({
   const [showPopover, setShowPopover] = useState(false);
   const [isPopoverVisible, setIsPopoverVisible] = useState(false);
   const inputRef = useRef(null);
+  const textareaRef = useRef(null);
   const popoverRef = useRef(null);
   const blurTimeoutRef = useRef(null);
-  const containerRef = useRef(null);
 
-  // Alt+A / Alt+B / Alt+C 로 ABC 선택 토글 (포커스가 이 문제 안에 있을 때만)
+  // Alt+A / Alt+B / Alt+C 로 ABC 선택 토글 (input/textarea에 focus되어 있을 때만)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (!e.altKey || !containerRef.current?.contains(document.activeElement)) return;
+      if (!e.altKey) return;
+      const active = document.activeElement;
+      const isInputFocused = inputRef.current === active || textareaRef.current === active;
+      if (!isInputFocused) return;
       const key = e.key?.toLowerCase();
       if (key !== 'a' && key !== 'b' && key !== 'c') return;
       const option = key.toUpperCase();
@@ -104,7 +107,7 @@ function ExamQuestionItem({
   };
 
   return (
-    <div ref={containerRef} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
           <span className="text-xs font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest">
@@ -196,7 +199,8 @@ function ExamQuestionItem({
           )}
         </div>
       ) : (
-        <textarea 
+        <textarea
+          ref={textareaRef}
           className="q-input w-full border-2 border-gray-100 dark:border-gray-700 rounded-xl p-4 focus:border-indigo-500 dark:focus:border-indigo-400 outline-none transition-all h-32 text-lg resize-none bg-transparent dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
           value={question.userAnswer}
           onChange={(e) => onUpdateAnswer(index, e.target.value)}
