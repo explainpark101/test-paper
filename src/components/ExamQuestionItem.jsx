@@ -18,7 +18,7 @@ function ExamQuestionItem({
   const popoverRef = useRef(null);
   const blurTimeoutRef = useRef(null);
 
-  // Alt+A / Alt+B / Alt+C 로 ABC 선택 토글 (input/textarea에 focus되어 있을 때만)
+  // Alt+A/B/C 또는 Alt+1/2/3 로 ABC 선택 토글 (input/textarea에 focus되어 있을 때만)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!e.altKey) return;
@@ -26,8 +26,11 @@ function ExamQuestionItem({
       const isInputFocused = inputRef.current === active || textareaRef.current === active;
       if (!isInputFocused) return;
       const key = e.key?.toLowerCase();
-      if (key !== 'a' && key !== 'b' && key !== 'c') return;
-      const option = key.toUpperCase();
+      let option = null;
+      if (key === 'a' || key === '1') option = 'A';
+      else if (key === 'b' || key === '2') option = 'B';
+      else if (key === 'c' || key === '3') option = 'C';
+      if (!option) return;
       onUpdateSelectedOption(index, question.selectedOption === option ? null : option);
       e.preventDefault();
     };
