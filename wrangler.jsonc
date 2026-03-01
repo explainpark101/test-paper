@@ -3,6 +3,7 @@
 	"name": "kv",
 	"main": "src/index.js",
 	"compatibility_date": "2026-02-22",
+	"preview_urls": false,
 	"observability": {
 		"enabled": true
 	},

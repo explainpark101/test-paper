@@ -24,7 +24,10 @@ export default {
 		if (request.method === "PUT") {
 		  const val = await request.text();
 		  await env.KV.put(key, val);
-		  return new Response("Success", { headers: corsHeaders });
+		  return new Response({
+			status: "Success",
+			data: val
+		  }, { headers: corsHeaders });
 		}
   
 		if (request.method === "GET") {
