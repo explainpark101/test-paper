@@ -67,9 +67,11 @@ function ScoreQuestionItem({
         placeholder="정답 입력 (Enter: 다음)..."
       />
       <div
-          className={`q-memo-input w-full rounded-2xl border-2 outline-none text-sm transition-all min-h-[60px] max-h-[280px] overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-800 dark:text-gray-100 ${
-          isFocused ? 'border-indigo-500 dark:border-indigo-400' : 'border-gray-100 dark:border-gray-700'
-        }`}
+          className={`q-memo-input w-full rounded-2xl border-2 outline-none text-sm transition-all overflow-hidden flex flex-col bg-white dark:bg-gray-800 dark:text-gray-100 ${
+          isFocused || aiFlowOpen
+            ? 'h-[200px] border-indigo-500 dark:border-indigo-400'
+            : 'min-h-[60px] border-gray-100 dark:border-gray-700'
+          }`}
       >
         {isFocused || aiFlowOpen ? (
           <MemoEditor
@@ -78,7 +80,7 @@ function ScoreQuestionItem({
             onChange={(v) => onUpdateMemo(originalIndex, v)}
             onBlur={() => setIsFocused(false)}
             onAiFlowOpenChange={setAiFlowOpen}
-            className="min-h-[60px] [&_.md-editor]:min-h-[60px] [&_.md-editor-content]:min-h-[60px]"
+            className="flex-1 min-h-0 flex flex-col [&_.md-editor]:h-full! [&_.md-editor]:min-h-0 [&_.md-editor]:flex-1 [&_.md-editor-content]:min-h-0"
             placeholder="메모"
           />
         ) : (

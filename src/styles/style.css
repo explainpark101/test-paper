@@ -2501,6 +2501,23 @@ div.smart-blue-theme hr {
   line-height: var(--leading-none);
 }
 
+/* Memo cell: 칸에 맞게 높이 채우고, 에디터 입력 영역만 스크롤 */
+.q-memo-input .md-editor .md-editor-content {
+  min-height: 0;
+  overflow: hidden;
+}
+.q-memo-input .md-editor .md-editor-input-wrapper {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.q-memo-input .md-editor .cm-editor {
+  min-height: 0;
+}
+.q-memo-input .md-editor .cm-scroller {
+  overflow-y: auto !important;
+}
+
 /* Memo cell: 상단 툴바·AI 버튼, 하단 글자수 인디케이터 sticky */
 /* .q-memo-input .memo-editor-toolbar-top {
   position: sticky;
