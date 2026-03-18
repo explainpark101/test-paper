@@ -112,6 +112,9 @@ function MemoEditor({ value, onChange, onBlur, theme, editorId, className = '', 
       } else {
         next.firstElementChild?.click();
       }
+      setTimeout(() => {
+        next.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 150);
     };
 
     const handleKeyDown = (e) => {
