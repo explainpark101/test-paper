@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Printer, Download, FileText } from 'lucide-react';
+import { X, Printer, Download, Copy } from 'lucide-react';
 import { parseMarkdown } from '../utils/markdownParser';
 
 /**
@@ -10,6 +10,7 @@ import { parseMarkdown } from '../utils/markdownParser';
  */
 function PrintScoreView({ title, questions, onClose }) {
   const [viewMode, setViewMode] = useState('full'); // 'full' | 'memo-only'
+  const [copiedMd, setCopiedMd] = useState(false);
   
   const wrongOnly = questions.filter(
     (q) => q.correctAnswer.trim() !== '' && q.userAnswer.trim() !== q.correctAnswer.trim()
@@ -19,16 +20,19 @@ function PrintScoreView({ title, questions, onClose }) {
 
   const handlePrint = () => window.print();
 
-  const handleExportMD = () => {
+  const buildMemoMdContent = () => {
     let mdContent = `# \`${title}\` 메모 모음\n\n`;
-    
-    memosOnly.forEach((q, idx) => {
+    memosOnly.forEach((q) => {
       const questionNum = questions.indexOf(q) + 1;
       mdContent += `# 문항 ${questionNum}\n\n`;
       mdContent += `${q.memo}\n\n`;
       mdContent += '---\n\n';
     });
+    return mdContent;
+  };
 
+  const handleExportMD = () => {
+    const mdContent = buildMemoMdContent();
     const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -36,6 +40,16 @@ function PrintScoreView({ title, questions, onClose }) {
     a.download = `${title}_메모_${Date.now()}.md`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleCopyMD = async () => {
+    try {
+      await navigator.clipboard.writeText(buildMemoMdContent());
+      setCopiedMd(true);
+      setTimeout(() => setCopiedMd(false), 2000);
+    } catch {
+      // clipboard unavailable
+    }
   };
 
   return (
@@ -87,6 +101,13 @@ function PrintScoreView({ title, questions, onClose }) {
               className="flex items-center gap-2 rounded-lg bg-green-600 dark:bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 dark:hover:bg-green-600"
             >
               <Download className="w-4 h-4" /> MD 파일로 추출
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyMD}
+              className="flex items-center gap-2 rounded-lg border border-green-600 dark:border-green-500 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-gray-600"
+            >
+              <Copy className="w-4 h-4" /> {copiedMd ? '복사됨' : 'MD 파일 내용 복사'}
             </button>
             <button
               type="button"
